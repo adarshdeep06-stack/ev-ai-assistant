@@ -40,15 +40,22 @@ st.markdown("""
         margin-bottom: 20px;
         text-align: center;
     }
-    /* Fixed Input Box Readability */
+    
+    /* --- HIGH CONTRAST INPUT BOX FIX --- */
+    div[data-baseweb="input"] {
+        background-color: #0b1329 !important;
+        border-radius: 10px !important;
+        border: 2px solid #38BDF8 !important;
+    }
     .stTextInput input {
-        background-color: #090d16 !important;
+        background-color: #0b1329 !important;
         color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
         font-size: 1.2rem !important;
         font-weight: 600 !important;
-        border: 2px solid #38BDF8 !important;
-        border-radius: 10px !important;
+        border: none !important;
     }
+
     .calc-screen {
         background-color: #090d16;
         color: #38BDF8;
@@ -120,7 +127,7 @@ def speak(text):
         window.speechSynthesis.cancel();
         var msg = new SpeechSynthesisUtterance('{clean_t}');
         msg.rate = 1.0;
-        msg.pitch = 1.2; // Tuned for EV's female voice profile
+        msg.pitch = 1.2;
         window.speechSynthesis.speak(msg);
     </script>
     """, height=0)
@@ -301,7 +308,6 @@ with tab_puzzle:
 
     st.markdown("---")
     
-    # Dashed format display
     st.markdown("#### 📝 Find 12 Words (Dashed Format):")
     for w in WORDS_12.keys():
         if w in st.session_state.solved_words:
@@ -323,7 +329,6 @@ with tab_puzzle:
         else:
             st.error("Incorrect word. Keep looking!")
 
-    # Hidden Answer Key Button
     st.markdown("---")
     if st.button("🔑 Show Answer Key / Clues"):
         st.session_state.show_answer = not st.session_state.show_answer
@@ -335,7 +340,6 @@ with tab_puzzle:
             st.write(f"- **{w}**: {clue}")
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # Completion Tick Check Popup
     if len(st.session_state.solved_words) == 12:
         st.markdown("""
         <div style='background: #15803d; color: white; padding: 20px; border-radius: 12px; text-align: center; margin-top: 15px;'>
