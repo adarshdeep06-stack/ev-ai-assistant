@@ -2,198 +2,279 @@ import streamlit as st
 import streamlit.components.v1 as components
 import math
 import re
-from datetime import date
+from datetime import date, datetime
 
-# --- 1. PAGE CONFIG & LIQUID NAVY STYLING ---
+# --- 1. PAGE CONFIG & DARK NAVY STYLING ---
 st.set_page_config(page_title="EV: personal helper 🧬", page_icon="🧬", layout="wide")
 
 st.markdown("""
 <style>
-    /* Liquid Navy & Lure Black Background */
     .stApp {
         background: linear-gradient(135deg, #030712 0%, #0B1528 50%, #02040A 100%);
         color: #E2E8F0;
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        font-family: system-ui, -apple-system, sans-serif;
     }
-    
-    /* Glowing Glass Containers */
-    .glass-panel {
-        background: rgba(15, 23, 42, 0.75);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(56, 189, 248, 0.2);
-        border-radius: 20px;
-        padding: 24px;
-        margin-bottom: 20px;
-        box-shadow: 0 10px 30px -10px rgba(2, 132, 199, 0.25);
-    }
-    
-    /* EV Header */
-    .ev-header {
-        font-size: 2.4rem;
-        font-weight: 800;
-        letter-spacing: -0.5px;
-        background: linear-gradient(90deg, #38BDF8 0%, #818CF8 50%, #C084FC 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+    .glass-card {
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(56, 189, 248, 0.25);
+        border-radius: 16px;
+        padding: 20px;
         margin-bottom: 15px;
     }
-
-    /* Fixed Text Input Contrast */
-    .stTextInput input {
-        background-color: #0f172a !important;
-        color: #ffffff !important;
-        font-size: 1.1rem !important;
-        font-weight: 500 !important;
-        border: 2px solid rgba(56, 189, 248, 0.4) !important;
-        border-radius: 12px !important;
+    .ev-title {
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: #38BDF8;
     }
-
-    /* Custom Button Styling */
-    .stButton>button {
-        background: linear-gradient(90deg, #0284c7 0%, #2563eb 100%);
-        color: #ffffff !important;
-        font-weight: 600;
-        border: none;
+    .calc-screen {
+        background-color: #090d16;
+        color: #38BDF8;
+        font-size: 1.5rem;
+        font-family: monospace;
+        padding: 15px;
         border-radius: 10px;
-        padding: 8px 16px;
-        transition: all 0.3s ease;
+        border: 2px solid #38BDF8;
+        min-height: 55px;
+        margin-bottom: 15px;
+        word-break: break-all;
     }
-    .stButton>button:hover {
-        box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+    .step-line {
+        background: rgba(2, 6, 23, 0.7);
+        border-left: 4px solid #38BDF8;
+        padding: 10px 15px;
+        margin-top: 6px;
+        font-family: monospace;
+        font-size: 1rem;
+        color: #E2E8F0;
     }
-
-    /* Tab navigation style */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        background: rgba(15, 23, 42, 0.5);
-        border-radius: 10px;
-        color: #94A3B8;
-        padding: 8px 16px;
-    }
-    .stTabs [aria-selected="true"] {
-        background: rgba(56, 189, 248, 0.2) !important;
-        color: #38BDF8 !important;
-        border: 1px solid rgba(56, 189, 248, 0.4) !important;
+    .grid-row {
+        font-family: monospace;
+        letter-spacing: 8px;
+        font-size: 1.2rem;
+        color: #38BDF8;
+        background: rgba(0,0,0,0.3);
+        padding: 6px 12px;
+        border-radius: 6px;
+        margin-bottom: 4px;
+        text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. VOICE SYNTHESIS HELPER (OFFLINE EV VOICE) ---
-def speak_response(text):
-    """Uses client-side browser speech synthesis with EV's signature voice settings."""
-    clean_text = text.replace("'", "\\'")
-    html_code = f"""
+# --- 2. SESSION STATE MANAGEMENT ---
+if "locked" not in st.session_state:
+    st.session_state.locked = True
+if "password" not in st.session_state:
+    st.session_state.password = "brandnewday"
+if "math_expr" not in st.session_state:
+    st.session_state.math_expr = ""
+if "history" not in st.session_state:
+    st.session_state.history = []
+if "solved_words" not in st.session_state:
+    st.session_state.solved_words = []
+
+# --- 3. PASSCODE LOCK SCREEN ---
+if st.session_state.locked:
+    st.markdown("<div class='glass-card' style='max-width: 400px; margin: 80px auto; text-align: center;'>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color:#38BDF8;'>🔒 EV Security Lock</h2>", unsafe_allow_html=True)
+    entered = st.text_input("Enter Passcode:", type="password", key="lock_field")
+    if st.button("Unlock EV", use_container_width=True):
+        if entered == st.session_state.password:
+            st.session_state.locked = False
+            st.rerun()
+        else:
+            st.error("Incorrect passcode!")
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.stop()
+
+# --- 4. SPEECH SYNTHESIS HELPER ---
+def speak(text):
+    clean_t = re.sub(r'[^a-zA-Z0-9\s\.]', '', str(text))
+    components.html(f"""
     <script>
         window.speechSynthesis.cancel();
-        var msg = new SpeechSynthesisUtterance('{clean_text}');
+        var msg = new SpeechSynthesisUtterance('{clean_t}');
         msg.rate = 0.95;
-        msg.pitch = 1.1;
         window.speechSynthesis.speak(msg);
     </script>
-    """
-    components.html(html_code, height=0, width=0)
+    """, height=0)
 
-# --- 3. OFFLINE SCIENTIFIC CALCULATOR ENGINE ---
-def ev_scientific_calc(query: str):
-    q = query.lower().strip()
-    safe_dict = {
-        'sin': math.sin, 'cos': math.cos, 'tan': math.tan,
-        'asin': math.asin, 'acos': math.acos, 'atan': math.atan,
-        'sqrt': math.sqrt, 'log': math.log10, 'ln': math.log,
-        'exp': math.exp, 'pi': math.pi, 'e': math.e,
-        'factorial': math.factorial, 'radians': math.radians,
-        'degrees': math.degrees, 'pow': math.pow, 'abs': abs
-    }
-    
-    clean_q = re.sub(r'square root of ([0-9.]+)', r'sqrt(\1)', q)
-    clean_q = re.sub(r'log of ([0-9.]+)', r'log(\1)', clean_q)
-    clean_q = re.sub(r'sin of ([0-9.]+)', r'sin(radians(\1))', clean_q)
-    clean_q = re.sub(r'cos of ([0-9.]+)', r'cos(radians(\1))', clean_q)
-    clean_q = re.sub(r'tan of ([0-9.]+)', r'tan(radians(\1))', clean_q)
-    clean_q = clean_q.replace('x', '*').replace('^', '**')
-    clean_q = re.sub(r'[^0-9\.\+\-\*\/\(\)\,\s\a-z\_]', '', clean_q)
-    
-    try:
-        res = eval(clean_q, {"__builtins__": None}, safe_dict)
-        if isinstance(res, float):
-            res = round(res, 6)
-        return f"Result: {res}", str(res)
-    except Exception:
-        return "Enter a valid scientific expression (e.g. 'sqrt(144)', 'sin(30)', 'log(100)').", None
-
-# --- 4. DAILY WORD PUZZLE DATABASE ---
-DAILY_PUZZLES = [
-    {"word": "APPLE", "scramble": "P E A L P", "clue": "A common sweet red or green fruit.", "hint": "Starts with 'A'"},
-    {"word": "BRAIN", "scramble": "R I A N B", "clue": "The center of thought in your body.", "hint": "Starts with 'B'"},
-    {"word": "CLOUD", "scramble": "O L D C U", "clue": "Fluffy white body in the sky.", "hint": "Starts with 'C'"},
-    {"word": "DREAM", "scramble": "R E A M D", "clue": "Thoughts or images while sleeping.", "hint": "Starts with 'D'"},
-    {"word": "EARTH", "scramble": "R T H E A", "clue": "The planet we all live on.", "hint": "Starts with 'E'"},
-    {"word": "FLAME", "scramble": "L A M E F", "clue": "The visible part of a fire.", "hint": "Starts with 'F'"},
-    {"word": "GRASS", "scramble": "S R A S G", "clue": "Green vegetation covering lawns.", "hint": "Starts with 'G'"},
-    {"word": "HEART", "scramble": "E A R T H", "clue": "Organ that pumps blood.", "hint": "Starts with 'H'"},
-    {"word": "LIGHT", "scramble": "G H T L I", "clue": "Natural agent that stimulates sight.", "hint": "Starts with 'L'"},
-    {"word": "PLANT", "scramble": "L A N T P", "clue": "A living organism that absorbs water.", "hint": "Starts with 'P'"},
-    {"word": "SMOKE", "scramble": "M O K E S", "clue": "Gas produced by burning material.", "hint": "Starts with 'S'"},
-    {"word": "WATER", "scramble": "T E R W A", "clue": "Clear liquid essential for life.", "hint": "Starts with 'W'"}
-]
-
-# --- MAIN APP LAYOUT ---
-st.markdown("<h1 class='ev-header'>EV: personal helper 🧬</h1>", unsafe_allow_html=True)
-
-tab_calc, tab_game = st.tabs(["🧮 Scientific Calculator", "🧩 Daily Word Arcade"])
-
-# --- TAB 1: CALCULATOR ---
-with tab_calc:
-    st.markdown("<div class='glass-panel'><h3>Scientific Math Assistant</h3><p style='color:#94A3B8;'>Calculates trigonometry, logarithms, factorials, roots, and standard math offline.</p></div>", unsafe_allow_html=True)
-    
-    col1, col2, col3, col4 = st.columns(4)
-    if col1.button("sqrt(256)"): st.session_state['math_in'] = "sqrt(256)"
-    if col2.button("sin(90)"): st.session_state['math_in'] = "sin of 90"
-    if col3.button("log(1000)"): st.session_state['math_in'] = "log(1000)"
-    if col4.button("5^3"): st.session_state['math_in'] = "5^3"
-    
-    expr = st.text_input("Enter Math Expression:", key="math_in", placeholder="e.g. sqrt(144) + log(10)")
-    
-    # Calculate and Dictate Button
-    dictate_btn = st.button("🔊 Calculate & Dictate Answer")
-    
-    if expr or dictate_btn:
-        display_text, speech_val = ev_scientific_calc(expr)
-        st.markdown(f"<div class='glass-panel'><h4 style='color:#38BDF8;'>{display_text}</h4></div>", unsafe_allow_html=True)
+# --- 5. SIDEBAR: HISTORY & CONTROLS ---
+with st.sidebar:
+    st.markdown("<h2 style='color:#38BDF8;'>⚙️ EV Controls</h2>", unsafe_allow_html=True)
+    if st.button("🔒 Lock EV Now", use_container_width=True):
+        st.session_state.locked = True
+        st.rerun()
         
-        if dictate_btn and speech_val:
-            speak_response(f"The dictated answer is {speech_val}")
+    with st.expander("🔑 Change Password"):
+        p1 = st.text_input("New Password:", type="password")
+        if st.button("Save Password"):
+            if p1:
+                st.session_state.password = p1
+                st.success("Password updated!")
 
-# --- TAB 2: DAILY WORD PUZZLE ARCADE ---
-with tab_game:
-    today_index = date.today().timetuple().tm_yday % len(DAILY_PUZZLES)
-    puzzle = DAILY_PUZZLES[today_index]
-    
-    st.markdown(f"""
-    <div class='glass-panel'>
-        <h3>🧩 Today's Daily Offline Word Puzzle</h3>
-        <p style='color:#94A3B8;'>Date: {date.today().strftime('%A, %B %d, %Y')}</p>
-        <p style='font-size: 1.1rem;'>Unscramble these letters to form a 5-letter daily word:</p>
-        <h1 style='letter-spacing: 8px; color: #38BDF8; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; text-align: center;'>{puzzle['scramble']}</h1>
-        <p><b>Clue:</b> <i>"{puzzle['clue']}"</i></p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    user_guess = st.text_input("Your Answer:", key="puzzle_guess", placeholder="Type your 5-letter word here").strip().upper()
-    
-    if user_guess:
-        if user_guess == puzzle['word']:
-            st.success("🎉 Correct! You solved today's word puzzle!")
-            speak_response("Awesome job! You solved today's puzzle.")
-        else:
-            st.error("Incorrect. Try again or check the Answer Key section below!")
-
-    # --- ANSWER KEY SECTION ---
     st.markdown("---")
-    with st.expander("🔑 Answer Key & Solution Section"):
-        st.write(f"**Letter Hint:** {puzzle['hint']}")
-        if st.button("Reveal Solution"):
-            st.info(f"The answer for today's puzzle is: **{puzzle['word']}**")
+    st.markdown("<h3 style='color:#38BDF8;'>📜 Search History</h3>", unsafe_allow_html=True)
+    if st.session_state.history:
+        for item in reversed(st.session_state.history):
+            st.write(f"**{item['q']}**")
+            st.caption(f"= {item['r']} ({item['t']})")
+            st.markdown("---")
+        if st.button("Clear History"):
+            st.session_state.history = []
+            st.rerun()
+    else:
+        st.info("No past calculations yet.")
+
+# --- 6. MAIN APP INTERFACE ---
+st.markdown("<h1 class='ev-title'>EV: personal helper 🧬</h1>", unsafe_allow_html=True)
+
+tab_calc, tab_puzzle = st.tabs(["🧮 Scientific Calculator", "📰 Daily Newspaper Puzzle"])
+
+# --- TAB 1: CALCULATOR & KEYPAD ---
+with tab_calc:
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    
+    # Display Screen
+    screen_val = st.session_state.math_expr if st.session_state.math_expr else "0"
+    st.markdown(f"<div class='calc-screen'>{screen_val}</div>", unsafe_allow_html=True)
+
+    # Keypad grid layout
+    keys = [
+        ["sin(", "cos(", "tan(", "sqrt(", "^"],
+        ["log(", "ln(", "pi", "e", "("],
+        ["7", "8", "9", "/", ")"],
+        ["4", "5", "6", "*", "⌫"],
+        ["1", "2", "3", "-", "CLEAR"],
+        ["0", ".", "+", "=", "🔊 Dictate"]
+    ]
+
+    for row in keys:
+        cols = st.columns(5)
+        for i, btn in enumerate(row):
+            if cols[i].button(btn, key=f"k_{btn}", use_container_width=True):
+                if btn == "CLEAR":
+                    st.session_state.math_expr = ""
+                elif btn == "⌫":
+                    st.session_state.math_expr = st.session_state.math_expr[:-1]
+                elif btn not in ["=", "🔊 Dictate"]:
+                    st.session_state.math_expr += btn
+                st.rerun()
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # Step-by-Step Downward Solver Engine
+    if st.session_state.math_expr:
+        expr = st.session_state.math_expr
+        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+        st.markdown("### 📐 Step-by-Step Downward Solution")
+        
+        steps = []
+        steps.append(f"Step 1: Expression entered -> {expr}")
+        
+        # Format string for Python evaluation
+        parsed = expr.replace("^", "**").replace("pi", "math.pi").replace("e", "math.e")
+        parsed = re.sub(r'sqrt\(', 'math.sqrt(', parsed)
+        parsed = re.sub(r'sin\(', 'math.sin(math.radians(', parsed) # degrees default
+        parsed = re.sub(r'cos\(', 'math.cos(math.radians(', parsed)
+        parsed = re.sub(r'tan\(', 'math.tan(math.radians(', parsed)
+        parsed = re.sub(r'log\(', 'math.log10(', parsed)
+        parsed = re.sub(r'ln\(', 'math.log(', parsed)
+        
+        # Balance parenthetical conversions for trig
+        trig_count = expr.count("sin(") + expr.count("cos(") + expr.count("tan(")
+        parsed += ")" * trig_count
+
+        steps.append(f"Step 2: Simplified for calculation -> {parsed}")
+
+        try:
+            res = eval(parsed, {"math": math, "__builtins__": None})
+            if isinstance(res, float):
+                res = round(res, 6)
+            steps.append(f"Step 3: Final Answer calculated -> {res}")
+            
+            for s in steps:
+                st.markdown(f"<div class='step-line'>{s}</div>", unsafe_allow_html=True)
+
+            # Record to history
+            if not st.session_state.history or st.session_state.history[-1]['q'] != expr:
+                st.session_state.history.append({
+                    'q': expr, 'r': str(res), 't': datetime.now().strftime("%H:%M")
+                })
+            
+            # Speak aloud if requested
+            speak(f"The answer is {res}")
+
+        except Exception:
+            st.markdown("<div class='step-line' style='border-left-color: #ef4444;'>Waiting for complete scientific expression...</div>", unsafe_allow_html=True)
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# --- TAB 2: DAILY 12-WORD NEWSPAPER PUZZLE ---
+with tab_puzzle:
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.markdown(f"<h3>📰 Daily Indian Newspaper Word Search Grid</h3><p style='color:#94A3B8;'>Date: {date.today().strftime('%B %d, %Y')}</p>", unsafe_allow_html=True)
+    
+    # 10x10 Word Search Grid containing 12 hidden words
+    GRID = [
+        ["I", "N", "D", "I", "A", "M", "A", "T", "H", "S"],
+        ["S", "C", "I", "E", "N", "C", "E", "P", "E", "N"],
+        ["P", "L", "A", "N", "E", "T", "A", "R", "R", "C"],
+        ["A", "E", "A", "R", "T", "H", "C", "O", "D", "E"],
+        ["C", "A", "R", "D", "B", "R", "A", "I", "N", "S"],
+        ["E", "M", "O", "O", "N", "L", "I", "G", "H", "T"],
+        ["T", "R]
+    ]
+
+    WORDS_12 = {
+        "INDIA": "Our country name",
+        "MATHS": "Subject of calculations",
+        "SCIENCE": "Study of nature and universe",
+        "PLANET": "Celestial body orbiting a star",
+        "EARTH": "Our home world",
+        "CODE": "Program instructions",
+        "BRAIN": "Control center of the body",
+        "SPACE": "Cosmic realm above sky",
+        "MOON": "Earth's natural satellite",
+        "LIGHT": "Energy that lets us see",
+        "PENCIL": "Tool used for writing",
+        "CARD": "Paper object or ticket"
+    }
+
+    # Display Grid
+    for row in GRID:
+        st.markdown(f"<div class='grid-row'>{' '.join(row)}</div>", unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("#### 🔍 Clues to Find All 12 Words:")
+    c1, c2 = st.columns(2)
+    keys_list = list(WORDS_12.keys())
+    for idx, w in enumerate(keys_list):
+        target_col = c1 if idx < 6 else c2
+        status = "✅" if w in st.session_state.solved_words else "📌"
+        target_col.write(f"{status} **{w}**: {WORDS_12[w]}")
+
+    st.markdown("---")
+    guess = st.text_input("Enter a word you found in the grid:", key="puz_in").strip().upper()
+    if st.button("Submit Found Word"):
+        if guess in WORDS_12:
+            if guess not in st.session_state.solved_words:
+                st.session_state.solved_words.append(guess)
+                speak(f"Correct! You found {guess}")
+                st.rerun()
+            else:
+                st.warning("You already found this word!")
+        else:
+            st.error("Word not in list or incorrect!")
+
+    # Complete Puzzle Check Popup
+    if len(st.session_state.solved_words) == 12:
+        st.markdown("""
+        <div style='background: #15803d; color: white; padding: 20px; border-radius: 12px; text-align: center; margin-top: 15px;'>
+            <h1>✔ PUZZLE COMPLETED!</h1>
+            <p>Awesome job! You found all 12 words in today's grid!</p>
+        </div>
+        """, unsafe_allow_html=True)
+        speak("Congratulations! You completed today's newspaper puzzle!")
+
+    st.markdown("</div>", unsafe_allow_html=True)
