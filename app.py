@@ -12,7 +12,7 @@ st.markdown("""
     .stApp {
         background: linear-gradient(135deg, #070B14 0%, #0F172A 50%, #020617 100%);
         color: #FFFFFF !important;
-        padding-bottom: 130px;
+        padding-bottom: 140px;
     }
     
     /* Sidebar Styling */
@@ -24,10 +24,10 @@ st.markdown("""
     
     /* Liquid Glass Navy Blue Bubbles with High Text Visibility */
     .glass-box {
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 58, 138, 0.7) 100%);
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(30, 58, 138, 0.75) 100%);
         backdrop-filter: blur(18px);
         -webkit-backdrop-filter: blur(18px);
-        border: 1px solid rgba(56, 189, 248, 0.6);
+        border: 1.5px solid rgba(56, 189, 248, 0.6);
         border-radius: 20px;
         padding: 24px;
         box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.7);
@@ -35,7 +35,7 @@ st.markdown("""
         color: #FFFFFF !important;
     }
     
-    .glass-box *, .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+    .glass-box *, .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, label, span {
         color: #FFFFFF !important;
     }
     
@@ -134,16 +134,16 @@ with st.sidebar:
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Helper function for Strict Female Voice + Bottom Waveform + Top Subtitles
+# Safe Voice Button Renderer (Zero f-string curl brace conflicts)
 def render_voice_button(text_to_speak, button_id):
     safe_text = text_to_speak.replace("'", "\\'").replace("\n", " ")
-    return f"""
+    template = """
     <div>
         <script>
-        function speak_{button_id}() {{
+        function speak_BTN_ID() {
             window.speechSynthesis.cancel();
             
-            let cleanText = '{safe_text}'
+            let cleanText = 'SAFE_TEXT'
                 .replace(/agar/gi, 'aghar')
                 .replace(/chiz/gi, 'cheez')
                 .replace(/sidhat/gi, 'shiddat')
@@ -158,7 +158,7 @@ def render_voice_button(text_to_speak, button_id):
             utterance.rate = 0.92;
             utterance.pitch = 1.25;
 
-            function setFemaleVoice() {{
+            function setFemaleVoice() {
                 const voices = window.speechSynthesis.getVoices();
                 const targetVoice = voices.find(v => v.name === 'Samantha') ||
                                     voices.find(v => v.name === 'Karen') ||
@@ -169,46 +169,47 @@ def render_voice_button(text_to_speak, button_id):
                                     voices.find(v => v.name.toLowerCase().includes('female')) ||
                                     voices.find(v => v.lang.includes('en'));
 
-                if (targetVoice) {{
+                if (targetVoice) {
                     utterance.voice = targetVoice;
-                }}
-            }}
+                }
+            }
 
             setFemaleVoice();
-            if (window.speechSynthesis.onvoiceschanged !== undefined) {{
+            if (window.speechSynthesis.onvoiceschanged !== undefined) {
                 window.speechSynthesis.onvoiceschanged = setFemaleVoice;
-            }}
+            }
 
             const waveContainer = window.parent.document.getElementById('bottom-wave-container');
             const subtitleBox = window.parent.document.getElementById('top-subtitle-box');
 
-            utterance.onstart = function() {{
+            utterance.onstart = function() {
                 if (waveContainer) waveContainer.style.display = 'flex';
-                if (subtitleBox) {{
+                if (subtitleBox) {
                     subtitleBox.style.display = 'block';
-                    subtitleBox.innerText = "🗣️ EV: " + '{safe_text}';
-                }}
-            }};
-            utterance.onend = function() {{
+                    subtitleBox.innerText = "🗣️ EV: " + 'SAFE_TEXT';
+                }
+            };
+            utterance.onend = function() {
                 if (waveContainer) waveContainer.style.display = 'none';
                 if (subtitleBox) subtitleBox.style.display = 'none';
-            }};
-            utterance.onerror = function() {{
+            };
+            utterance.onerror = function() {
                 if (waveContainer) waveContainer.style.display = 'none';
                 if (subtitleBox) subtitleBox.style.display = 'none';
-            }};
+            };
 
             window.speechSynthesis.speak(utterance);
         }
         </script>
         
-        <button onclick="speak_{button_id}()" style="background: linear-gradient(135deg, #0284C7, #0369A1); color:white; padding:8px 18px; border:1px solid rgba(56,189,248,0.6); border-radius:10px; font-weight:700; cursor:pointer;">
+        <button onclick="speak_BTN_ID()" style="background: linear-gradient(135deg, #0284C7, #0369A1); color:white; padding:8px 18px; border:1px solid rgba(56,189,248,0.6); border-radius:10px; font-weight:700; cursor:pointer;">
             🔊 Speak Answer
         </button>
     </div>
     """
+    return template.replace("BTN_ID", str(button_id)).replace("SAFE_TEXT", safe_text)
 
-# Inject Full-Width Bottom Waveform Line, Top Subtitles, and Auto Greeting (Clean JS with zero f-string brace conflicts)
+# Inject Full-Width Bottom Waveform Line & Top Subtitles
 components.html("""
     <script>
     const doc = window.parent.document;
@@ -247,27 +248,27 @@ components.html("""
             bottom: 0;
             left: 0;
             width: 100vw;
-            height: 60px;
+            height: 65px;
             background: rgba(10, 15, 30, 0.98);
-            border-top: 1px solid rgba(56, 189, 248, 0.5);
+            border-top: 1.5px solid rgba(56, 189, 248, 0.6);
             display: none;
             justify-content: space-around;
             align-items: center;
-            padding: 0 20px;
+            padding: 0 15px;
             z-index: 999999;
             backdrop-filter: blur(16px);
-            box-shadow: 0 -5px 25px rgba(56, 189, 248, 0.3);
+            box-shadow: 0 -5px 30px rgba(56, 189, 248, 0.4);
         `;
         
-        for(let i=0; i<45; i++){
+        for(let i=0; i<50; i++){
             const bar = doc.createElement('div');
             bar.style.cssText = `
-                width: 5px;
+                width: 4px;
                 height: 10px;
                 background-color: #38BDF8;
                 border-radius: 3px;
                 animation: fullWaveAnim 0.8s infinite ease-in-out;
-                animation-delay: ${(i * 0.04).toFixed(2)}s;
+                animation-delay: ${(i * 0.03).toFixed(2)}s;
             `;
             waveBox.appendChild(bar);
         }
@@ -278,7 +279,7 @@ components.html("""
             style.innerHTML = `
                 @keyframes fullWaveAnim {
                     0%, 100% { height: 10px; opacity: 0.4; }
-                    50% { height: 42px; opacity: 1; background-color: #38bdf8; box-shadow: 0 0 15px #38bdf8; }
+                    50% { height: 45px; opacity: 1; background-color: #38bdf8; box-shadow: 0 0 15px #38bdf8; }
                 }
             `;
             doc.head.appendChild(style);
