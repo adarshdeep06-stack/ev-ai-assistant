@@ -134,7 +134,7 @@ with st.sidebar:
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Safe Voice Button Renderer (Zero f-string curl brace conflicts)
+# Safe Voice Button Renderer with Higher Sweet Female Pitch (1.38)
 def render_voice_button(text_to_speak, button_id):
     safe_text = text_to_speak.replace("'", "\\'").replace("\n", " ")
     template = """
@@ -155,8 +155,8 @@ def render_voice_button(text_to_speak, button_id):
 
             const utterance = new SpeechSynthesisUtterance(cleanText);
             utterance.lang = 'en-US';
-            utterance.rate = 0.92;
-            utterance.pitch = 1.25;
+            utterance.rate = 0.94;
+            utterance.pitch = 1.38;  # Higher sweet female pitch
 
             function setFemaleVoice() {
                 const voices = window.speechSynthesis.getVoices();
@@ -209,7 +209,7 @@ def render_voice_button(text_to_speak, button_id):
     """
     return template.replace("BTN_ID", str(button_id)).replace("SAFE_TEXT", safe_text)
 
-# Inject Full-Width Bottom Waveform Line & Top Subtitles
+# Inject Full-Screen Edge-to-Edge Bottom Waveform Line & Top Subtitles
 components.html("""
     <script>
     const doc = window.parent.document;
@@ -247,28 +247,29 @@ components.html("""
             position: fixed;
             bottom: 0;
             left: 0;
+            right: 0;
             width: 100vw;
-            height: 65px;
-            background: rgba(10, 15, 30, 0.98);
-            border-top: 1.5px solid rgba(56, 189, 248, 0.6);
+            height: 60px;
+            background: rgba(7, 11, 20, 0.98);
+            border-top: 1.5px solid rgba(56, 189, 248, 0.7);
             display: none;
-            justify-content: space-around;
+            justify-content: space-between;
             align-items: center;
-            padding: 0 15px;
+            padding: 0 10px;
             z-index: 999999;
             backdrop-filter: blur(16px);
-            box-shadow: 0 -5px 30px rgba(56, 189, 248, 0.4);
+            box-shadow: 0 -5px 30px rgba(56, 189, 248, 0.5);
         `;
         
-        for(let i=0; i<50; i++){
+        for(let i=0; i<65; i++){
             const bar = doc.createElement('div');
             bar.style.cssText = `
-                width: 4px;
-                height: 10px;
+                width: calc(100vw / 80);
+                height: 8px;
                 background-color: #38BDF8;
                 border-radius: 3px;
-                animation: fullWaveAnim 0.8s infinite ease-in-out;
-                animation-delay: ${(i * 0.03).toFixed(2)}s;
+                animation: fullWaveAnim 0.7s infinite ease-in-out;
+                animation-delay: ${(i * 0.025).toFixed(2)}s;
             `;
             waveBox.appendChild(bar);
         }
@@ -278,8 +279,8 @@ components.html("""
             style.id = 'wave-style-sheet';
             style.innerHTML = `
                 @keyframes fullWaveAnim {
-                    0%, 100% { height: 10px; opacity: 0.4; }
-                    50% { height: 45px; opacity: 1; background-color: #38bdf8; box-shadow: 0 0 15px #38bdf8; }
+                    0%, 100% { height: 8px; opacity: 0.4; }
+                    50% { height: 44px; opacity: 1; background-color: #38bdf8; box-shadow: 0 0 15px #38bdf8; }
                 }
             `;
             doc.head.appendChild(style);
@@ -290,15 +291,15 @@ components.html("""
     </script>
 """, height=0)
 
-# Trigger auto greeting once per session
+# Trigger auto greeting once per session with sweet high pitch
 if not st.session_state.greeted:
     greeting_script = """
     <script>
     setTimeout(() => {
         const greetingText = "Hello Happy! How was your day today?";
         const utterance = new SpeechSynthesisUtterance(greetingText);
-        utterance.pitch = 1.25;
-        utterance.rate = 0.92;
+        utterance.pitch = 1.38;
+        utterance.rate = 0.94;
         
         const voices = window.speechSynthesis.getVoices();
         const targetVoice = voices.find(v => v.name === 'Samantha') || voices.find(v => v.name.includes('Female')) || voices.find(v => v.lang.includes('en'));
