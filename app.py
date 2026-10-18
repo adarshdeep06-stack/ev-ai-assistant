@@ -4,7 +4,7 @@ import math
 import re
 from datetime import date, datetime
 
-# --- 1. PAGE CONFIG & DARK NAVY STYLING ---
+# --- 1. PAGE CONFIG & LIQUID NAVY STYLING ---
 st.set_page_config(page_title="EV: personal helper 🧬", page_icon="🧬", layout="wide")
 
 st.markdown("""
@@ -24,7 +24,30 @@ st.markdown("""
     .ev-title {
         font-size: 2.2rem;
         font-weight: 800;
+        background: linear-gradient(90deg, #38BDF8 0%, #818CF8 50%, #C084FC 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0px;
+    }
+    .quote-banner {
+        background: rgba(56, 189, 248, 0.1);
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        border-radius: 10px;
+        padding: 10px 15px;
         color: #38BDF8;
+        font-style: italic;
+        font-size: 0.95rem;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    /* Fixed Input Box Readability */
+    .stTextInput input {
+        background-color: #090d16 !important;
+        color: #ffffff !important;
+        font-size: 1.2rem !important;
+        font-weight: 600 !important;
+        border: 2px solid #38BDF8 !important;
+        border-radius: 10px !important;
     }
     .calc-screen {
         background-color: #090d16;
@@ -49,19 +72,19 @@ st.markdown("""
     }
     .grid-row {
         font-family: monospace;
-        letter-spacing: 8px;
+        letter-spacing: 10px;
         font-size: 1.2rem;
         color: #38BDF8;
-        background: rgba(0,0,0,0.3);
-        padding: 6px 12px;
-        border-radius: 6px;
-        margin-bottom: 4px;
+        background: rgba(0,0,0,0.4);
+        padding: 8px 12px;
+        border-radius: 8px;
+        margin-bottom: 6px;
         text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. SESSION STATE MANAGEMENT ---
+# --- 2. SESSION STATE ---
 if "locked" not in st.session_state:
     st.session_state.locked = True
 if "password" not in st.session_state:
@@ -72,8 +95,10 @@ if "history" not in st.session_state:
     st.session_state.history = []
 if "solved_words" not in st.session_state:
     st.session_state.solved_words = []
+if "show_answer" not in st.session_state:
+    st.session_state.show_answer = False
 
-# --- 3. PASSCODE LOCK SCREEN ---
+# --- 3. LOCK SCREEN ---
 if st.session_state.locked:
     st.markdown("<div class='glass-card' style='max-width: 400px; margin: 80px auto; text-align: center;'>", unsafe_allow_html=True)
     st.markdown("<h2 style='color:#38BDF8;'>🔒 EV Security Lock</h2>", unsafe_allow_html=True)
@@ -87,19 +112,55 @@ if st.session_state.locked:
     st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
 
-# --- 4. SPEECH SYNTHESIS HELPER ---
+# --- 4. EV VOICE (FEMALE SYNTHESIS & MIC) ---
 def speak(text):
     clean_t = re.sub(r'[^a-zA-Z0-9\s\.]', '', str(text))
     components.html(f"""
     <script>
         window.speechSynthesis.cancel();
         var msg = new SpeechSynthesisUtterance('{clean_t}');
-        msg.rate = 0.95;
+        msg.rate = 1.0;
+        msg.pitch = 1.2; // Tuned for EV's female voice profile
         window.speechSynthesis.speak(msg);
     </script>
     """, height=0)
 
-# --- 5. SIDEBAR: HISTORY & CONTROLS ---
+def render_mic():
+    components.html("""
+    <div style="text-align: center; margin-bottom: 15px;">
+        <button onclick="startListening()" style="background: linear-gradient(90deg, #0284c7, #2563eb); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 1rem;">
+            🎤 Tap to Speak Question to EV
+        </button>
+        <p id="micStatus" style="color: #94A3B8; font-size: 0.8rem; margin-top: 5px;"></p>
+    </div>
+    <script>
+        function startListening() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                var recognition = new SpeechRecognition();
+                recognition.lang = 'en-US';
+                document.getElementById('micStatus').innerText = "Listening...";
+                recognition.start();
+                recognition.onresult = function(event) {
+                    var speechResult = event.results[0][0].transcript;
+                    document.getElementById('micStatus').innerText = "Heard: " + speechResult;
+                    var inputs = window.parent.document.querySelectorAll('input[type="text"]');
+                    if (inputs.length > 0) {
+                        inputs[0].value = speechResult;
+                        inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                };
+                recognition.onerror = function() {
+                    document.getElementById('micStatus').innerText = "Microphone error or permission denied.";
+                };
+            } else {
+                document.getElementById('micStatus').innerText = "Speech recognition not supported in this browser.";
+            }
+        }
+    </script>
+    """, height=80)
+
+# --- 5. SIDEBAR CONTROLS ---
 with st.sidebar:
     st.markdown("<h2 style='color:#38BDF8;'>⚙️ EV Controls</h2>", unsafe_allow_html=True)
     if st.button("🔒 Lock EV Now", use_container_width=True):
@@ -126,27 +187,27 @@ with st.sidebar:
     else:
         st.info("No past calculations yet.")
 
-# --- 6. MAIN APP INTERFACE ---
+# --- 6. MAIN INTERFACE ---
 st.markdown("<h1 class='ev-title'>EV: personal helper 🧬</h1>", unsafe_allow_html=True)
+st.markdown("<div class='quote-banner'>\"With great powers comes great responsibilities\"</div>", unsafe_allow_html=True)
 
 tab_calc, tab_puzzle = st.tabs(["🧮 Scientific Calculator", "📰 Daily Newspaper Puzzle"])
 
 # --- TAB 1: CALCULATOR & KEYPAD ---
 with tab_calc:
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    render_mic()
     
-    # Display Screen
     screen_val = st.session_state.math_expr if st.session_state.math_expr else "0"
     st.markdown(f"<div class='calc-screen'>{screen_val}</div>", unsafe_allow_html=True)
 
-    # Keypad grid layout
     keys = [
         ["sin(", "cos(", "tan(", "sqrt(", "^"],
         ["log(", "ln(", "pi", "e", "("],
         ["7", "8", "9", "/", ")"],
         ["4", "5", "6", "*", "⌫"],
         ["1", "2", "3", "-", "CLEAR"],
-        ["0", ".", "+", "=", "🔊 Dictate"]
+        ["0", ".", "+", "=", "🔊 Speak"]
     ]
 
     for row in keys:
@@ -157,22 +218,19 @@ with tab_calc:
                     st.session_state.math_expr = ""
                 elif btn == "⌫":
                     st.session_state.math_expr = st.session_state.math_expr[:-1]
-                elif btn not in ["=", "🔊 Dictate"]:
+                elif btn not in ["=", "🔊 Speak"]:
                     st.session_state.math_expr += btn
                 st.rerun()
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Step-by-Step Downward Solver Engine
+    # Step-by-Step Solver
     if st.session_state.math_expr:
         expr = st.session_state.math_expr
         st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
         st.markdown("### 📐 Step-by-Step Downward Solution")
         
-        steps = []
-        steps.append(f"Step 1: Expression entered -> {expr}")
-        
-        # Format string for Python evaluation
+        steps = [f"Step 1: Input expression -> {expr}"]
         parsed = expr.replace("^", "**").replace("pi", "math.pi").replace("e", "math.e")
         parsed = re.sub(r'sqrt\(', 'math.sqrt(', parsed)
         parsed = re.sub(r'sin\(', 'math.sin(math.radians(', parsed)
@@ -180,17 +238,15 @@ with tab_calc:
         parsed = re.sub(r'tan\(', 'math.tan(math.radians(', parsed)
         parsed = re.sub(r'log\(', 'math.log10(', parsed)
         parsed = re.sub(r'ln\(', 'math.log(', parsed)
-        
-        trig_count = expr.count("sin(") + expr.count("cos(") + expr.count("tan(")
-        parsed += ")" * trig_count
+        parsed += ")" * (expr.count("sin(") + expr.count("cos(") + expr.count("tan("))
 
-        steps.append(f"Step 2: Simplified for calculation -> {parsed}")
+        steps.append(f"Step 2: Parsed formula -> {parsed}")
 
         try:
             res = eval(parsed, {"math": math, "__builtins__": None})
             if isinstance(res, float):
                 res = round(res, 6)
-            steps.append(f"Step 3: Final Answer calculated -> {res}")
+            steps.append(f"Step 3: Result calculated -> {res}")
             
             for s in steps:
                 st.markdown(f"<div class='step-line'>{s}</div>", unsafe_allow_html=True)
@@ -203,14 +259,14 @@ with tab_calc:
             speak(f"The answer is {res}")
 
         except Exception:
-            st.markdown("<div class='step-line' style='border-left-color: #ef4444;'>Waiting for complete scientific expression...</div>", unsafe_allow_html=True)
+            st.markdown("<div class='step-line' style='border-left-color: #ef4444;'>Waiting for complete mathematical expression...</div>", unsafe_allow_html=True)
         
         st.markdown("</div>", unsafe_allow_html=True)
 
-# --- TAB 2: DAILY 12-WORD NEWSPAPER PUZZLE ---
+# --- TAB 2: NEWSPAPER PUZZLE ---
 with tab_puzzle:
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-    st.markdown(f"<h3>📰 Daily Indian Newspaper Word Search Grid</h3><p style='color:#94A3B8;'>Date: {date.today().strftime('%B %d, %Y')}</p>", unsafe_allow_html=True)
+    st.markdown(f"<h3>📰 Daily Indian Newspaper Word Puzzle</h3><p style='color:#94A3B8;'>Date: {date.today().strftime('%B %d, %Y')}</p>", unsafe_allow_html=True)
     
     GRID = [
         ["I", "N", "D", "I", "A", "M", "A", "T", "H", "S"],
@@ -244,17 +300,19 @@ with tab_puzzle:
         st.markdown(f"<div class='grid-row'>{' '.join(row)}</div>", unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("#### 🔍 Clues to Find All 12 Words:")
-    c1, c2 = st.columns(2)
-    keys_list = list(WORDS_12.keys())
-    for idx, w in enumerate(keys_list):
-        target_col = c1 if idx < 6 else c2
-        status = "✅" if w in st.session_state.solved_words else "📌"
-        target_col.write(f"{status} **{w}**: {WORDS_12[w]}")
+    
+    # Dashed format display
+    st.markdown("#### 📝 Find 12 Words (Dashed Format):")
+    for w in WORDS_12.keys():
+        if w in st.session_state.solved_words:
+            st.markdown(f"✅ **{w}** (Solved)")
+        else:
+            dashed = " ".join(["_" for _ in w])
+            st.markdown(f"📌 `{dashed}` ({len(w)} letters)")
 
     st.markdown("---")
-    guess = st.text_input("Enter a word you found in the grid:", key="puz_in").strip().upper()
-    if st.button("Submit Found Word"):
+    guess = st.text_input("Type a word you found:", key="puz_in").strip().upper()
+    if st.button("Submit Word"):
         if guess in WORDS_12:
             if guess not in st.session_state.solved_words:
                 st.session_state.solved_words.append(guess)
@@ -263,8 +321,21 @@ with tab_puzzle:
             else:
                 st.warning("You already found this word!")
         else:
-            st.error("Word not in list or incorrect!")
+            st.error("Incorrect word. Keep looking!")
 
+    # Hidden Answer Key Button
+    st.markdown("---")
+    if st.button("🔑 Show Answer Key / Clues"):
+        st.session_state.show_answer = not st.session_state.show_answer
+
+    if st.session_state.show_answer:
+        st.markdown("<div style='background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px;'>", unsafe_allow_html=True)
+        st.write("### Clues & Answers:")
+        for w, clue in WORDS_12.items():
+            st.write(f"- **{w}**: {clue}")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # Completion Tick Check Popup
     if len(st.session_state.solved_words) == 12:
         st.markdown("""
         <div style='background: #15803d; color: white; padding: 20px; border-radius: 12px; text-align: center; margin-top: 15px;'>
