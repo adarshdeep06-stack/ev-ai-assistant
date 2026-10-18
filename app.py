@@ -5,61 +5,63 @@ import streamlit.components.v1 as components
 # Page Configuration
 st.set_page_config(page_title="EV: personal assistant 🧬", page_icon="🧬", layout="wide")
 
-# --- HIGH-CONTRAST LIQUID GLASS NAVY BLUE STYLING ---
+# --- HIGH-VISIBILITY FUTURISTIC LIQUID GLASS STYLING ---
 st.markdown("""
     <style>
     /* Main Background */
     .stApp {
-        background: linear-gradient(135deg, #090D16 0%, #111827 50%, #020617 100%);
-        color: #FFFFFF;
-        padding-bottom: 120px;
+        background: linear-gradient(135deg, #070B14 0%, #0F172A 50%, #020617 100%);
+        color: #FFFFFF !important;
+        padding-bottom: 130px;
     }
     
     /* Sidebar Styling */
     [data-testid="stSidebar"] {
         background-color: rgba(15, 23, 42, 0.95);
-        backdrop-filter: blur(12px);
-        border-right: 1px solid rgba(56, 189, 248, 0.2);
-    }
-    
-    /* High-Visibility Liquid Glass Navy Blue Bubbles */
-    .glass-box {
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 58, 138, 0.65) 100%);
         backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(56, 189, 248, 0.5);
-        border-radius: 18px;
+        border-right: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    
+    /* Liquid Glass Navy Blue Bubbles with High Text Visibility */
+    .glass-box {
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 58, 138, 0.7) 100%);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        border: 1px solid rgba(56, 189, 248, 0.6);
+        border-radius: 20px;
         padding: 24px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
-        margin-bottom: 20px;
+        box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.7);
+        margin-bottom: 22px;
         color: #FFFFFF !important;
     }
     
-    .glass-box h1, .glass-box h2, .glass-box h3, .glass-box p, .glass-box label, .glass-box span {
+    .glass-box *, .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
         color: #FFFFFF !important;
     }
     
-    /* Custom Buttons */
+    /* Custom Futuristic Buttons */
     .stButton>button {
         background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
-        color: white;
-        border: 1px solid rgba(56, 189, 248, 0.6);
-        border-radius: 10px;
+        color: white !important;
+        border: 1px solid rgba(56, 189, 248, 0.8);
+        border-radius: 12px;
         font-weight: 700;
+        box-shadow: 0 0 15px rgba(2, 132, 199, 0.4);
         transition: all 0.3s ease;
     }
     .stButton>button:hover {
         background: linear-gradient(135deg, #0ea5e9 0%, #0284C7 100%);
         border-color: #38bdf8;
-        box-shadow: 0 0 15px rgba(56, 189, 248, 0.6);
+        box-shadow: 0 0 25px rgba(56, 189, 248, 0.8);
     }
     
-    /* Input Fields */
+    /* High Visibility Input Fields */
     .stTextInput>div>div>input, .stTextArea>div>div>textarea {
         background-color: rgba(15, 23, 42, 0.95) !important;
         color: #FFFFFF !important;
-        border: 1px solid rgba(56, 189, 248, 0.5) !important;
-        border-radius: 10px !important;
+        border: 1px solid rgba(56, 189, 248, 0.6) !important;
+        border-radius: 12px !important;
+        font-size: 16px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -101,7 +103,7 @@ if not st.session_state.authenticated:
     st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
 
-# --- MAIN APPLICATION ---
+# --- MAIN APPLICATION HEADER ---
 st.markdown('<div class="glass-box"><h1>EV: personal assistant 🧬</h1></div>', unsafe_allow_html=True)
 
 # Sidebar Settings & Password Management
@@ -200,18 +202,18 @@ def render_voice_button(text_to_speak, button_id):
         }
         </script>
         
-        <button onclick="speak_{button_id}()" style="background: linear-gradient(135deg, #0284C7, #0369A1); color:white; padding:8px 18px; border:1px solid rgba(56,189,248,0.4); border-radius:8px; font-weight:600; cursor:pointer;">
+        <button onclick="speak_{button_id}()" style="background: linear-gradient(135deg, #0284C7, #0369A1); color:white; padding:8px 18px; border:1px solid rgba(56,189,248,0.6); border-radius:10px; font-weight:700; cursor:pointer;">
             🔊 Speak Answer
         </button>
     </div>
     """
 
-# Inject UI Elements (Bottom Waveform, Top Subtitles, Auto Greeting)
-st.components.v1.html(f"""
+# Inject Full-Width Bottom Waveform Line, Top Subtitles, and Auto Greeting (Clean JS with zero f-string brace conflicts)
+components.html("""
     <script>
     const doc = window.parent.document;
     
-    if (!doc.getElementById('top-subtitle-box')) {{
+    if (!doc.getElementById('top-subtitle-box')) {
         const subBox = doc.createElement('div');
         subBox.id = 'top-subtitle-box';
         subBox.style.cssText = `
@@ -219,25 +221,25 @@ st.components.v1.html(f"""
             top: 15px;
             left: 50%;
             transform: translateX(-50%);
-            width: 85%;
-            max-width: 800px;
+            width: 90%;
+            max-width: 900px;
             background: rgba(15, 23, 42, 0.98);
-            border: 1px solid rgba(56, 189, 248, 0.6);
+            border: 1px solid rgba(56, 189, 248, 0.7);
             color: #38BDF8;
-            padding: 14px 22px;
-            border-radius: 12px;
-            font-size: 16px;
+            padding: 14px 24px;
+            border-radius: 14px;
+            font-size: 17px;
             font-weight: 700;
             text-align: center;
             z-index: 999999;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
             display: none;
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(16px);
         `;
         doc.body.appendChild(subBox);
-    }}
+    }
 
-    if (!doc.getElementById('bottom-wave-container')) {{
+    if (!doc.getElementById('bottom-wave-container')) {
         const waveBox = doc.createElement('div');
         waveBox.id = 'bottom-wave-container';
         waveBox.style.cssText = `
@@ -245,51 +247,83 @@ st.components.v1.html(f"""
             bottom: 0;
             left: 0;
             width: 100vw;
-            height: 55px;
-            background: rgba(15, 23, 42, 0.96);
-            border-top: 1px solid rgba(56, 189, 248, 0.4);
+            height: 60px;
+            background: rgba(10, 15, 30, 0.98);
+            border-top: 1px solid rgba(56, 189, 248, 0.5);
             display: none;
-            justify-content: center;
+            justify-content: space-around;
             align-items: center;
-            gap: 6px;
+            padding: 0 20px;
             z-index: 999999;
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 -5px 25px rgba(56, 189, 248, 0.3);
         `;
         
-        for(let i=0; i<30; i++){{
+        for(let i=0; i<45; i++){
             const bar = doc.createElement('div');
             bar.style.cssText = `
-                width: 4px;
+                width: 5px;
                 height: 10px;
                 background-color: #38BDF8;
-                border-radius: 2px;
+                border-radius: 3px;
                 animation: fullWaveAnim 0.8s infinite ease-in-out;
-                animation-delay: ${(i * 0.05).toFixed(2)}s;
+                animation-delay: ${(i * 0.04).toFixed(2)}s;
             `;
             waveBox.appendChild(bar);
-        }}
+        }
 
-        if (!doc.getElementById('wave-style-sheet')) {{
+        if (!doc.getElementById('wave-style-sheet')) {
             const style = doc.createElement('style');
             style.id = 'wave-style-sheet';
             style.innerHTML = `
-                @keyframes fullWaveAnim {{
-                    0%, 100% {{ height: 8px; opacity: 0.4; }}
-                    50% {{ height: 38px; opacity: 1; background-color: #0ea5e9; box-shadow: 0 0 12px #38bdf8; }}
-                }}
+                @keyframes fullWaveAnim {
+                    0%, 100% { height: 10px; opacity: 0.4; }
+                    50% { height: 42px; opacity: 1; background-color: #38bdf8; box-shadow: 0 0 15px #38bdf8; }
+                }
             `;
             doc.head.appendChild(style);
-        }}
+        }
 
         doc.body.appendChild(waveBox);
-    }}
-
-    // Auto Greeting on First Load
-    {"window.hasGreeted = true; setTimeout(() => { const greetingText = 'Hello! How was your day today?'; const utterance = new SpeechSynthesisUtterance(greetingText); utterance.pitch = 1.25; utterance.rate = 0.92; window.speechSynthesis.speak(utterance); }, 1000);" if not st.session_state.greeted else ""}
+    }
     </script>
 """, height=0)
 
-st.session_state.greeted = True
+# Trigger auto greeting once per session
+if not st.session_state.greeted:
+    greeting_script = """
+    <script>
+    setTimeout(() => {
+        const greetingText = "Hello Happy! How was your day today?";
+        const utterance = new SpeechSynthesisUtterance(greetingText);
+        utterance.pitch = 1.25;
+        utterance.rate = 0.92;
+        
+        const voices = window.speechSynthesis.getVoices();
+        const targetVoice = voices.find(v => v.name === 'Samantha') || voices.find(v => v.name.includes('Female')) || voices.find(v => v.lang.includes('en'));
+        if (targetVoice) utterance.voice = targetVoice;
+        
+        const waveContainer = window.parent.document.getElementById('bottom-wave-container');
+        const subtitleBox = window.parent.document.getElementById('top-subtitle-box');
+        
+        utterance.onstart = function() {
+            if (waveContainer) waveContainer.style.display = 'flex';
+            if (subtitleBox) {
+                subtitleBox.style.display = 'block';
+                subtitleBox.innerText = "🗣️ EV: " + greetingText;
+            }
+        };
+        utterance.onend = function() {
+            if (waveContainer) waveContainer.style.display = 'none';
+            if (subtitleBox) subtitleBox.style.display = 'none';
+        };
+        
+        window.speechSynthesis.speak(utterance);
+    }, 1200);
+    </script>
+    """
+    components.html(greeting_script, height=0)
+    st.session_state.greeted = True
 
 # Layout Tabs
 tab1, tab2, tab3 = st.tabs(["💬 Chat & Search", "📊 Daily Trackers", "📸 Image Analysis"])
