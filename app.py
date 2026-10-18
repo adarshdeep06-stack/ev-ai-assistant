@@ -66,12 +66,43 @@ with st.sidebar:
         st.session_state.authenticated = False
         st.rerun()
 
+# Helper function to generate Female Indian Accent Voice JavaScript
+def render_voice_button(text_to_speak, button_id):
+    safe_text = text_to_speak.replace("'", "\\'").replace("\n", " ")
+    return f"""
+    <script>
+    function speak_{button_id}() {{
+        window.speechSynthesis.cancel(); // Stop any ongoing speech
+        const utterance = new SpeechSynthesisUtterance('{safe_text}');
+        utterance.lang = 'en-IN'; // Indian accent for proper Hinglish pronunciation
+        utterance.rate = 0.95;    // Natural speaking speed
+        utterance.pitch = 1.1;    // Slightly higher pitch for female voice tone
+
+        // Select Female Voice from available device voices
+        const voices = window.speechSynthesis.getVoices();
+        const femaleVoice = voices.find(v => 
+            (v.lang.includes('IN') || v.lang.includes('hi') || v.lang.includes('en')) && 
+            (v.name.includes('Female') || v.name.includes('Samantha') || v.name.includes('Siri') || v.name.includes('Veena') || v.name.includes('Google हिन्दी') || v.name.includes('Karen') || v.name.includes('Zira'))
+        ) || voices.find(v => v.lang.includes('en-IN'));
+
+        if (femaleVoice) {{
+            utterance.voice = femaleVoice;
+        }}
+
+        window.speechSynthesis.speak(utterance);
+    }}
+    </script>
+    <button onclick="speak_{button_id}()" style="background-color:#E91E63; color:white; padding:6px 14px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; margin-top:5px;">
+        🔊 Listen to EV
+    </button>
+    """
+
 # Layout Tabs
 tab1, tab2, tab3 = st.tabs(["💬 Chat & Voice", "📊 Daily Trackers", "📸 Image Analysis"])
 
 # Tab 1: Chat, Tutor & Voice
 with tab1:
-    st.subheader("EV AI Assistant with Voice")
+    st.subheader("EV AI Assistant")
     
     hinglish_quotes = [
         "Har mushkil ka hal nikal sakta hai, bas thoda focus chahiye! 💡",
@@ -82,54 +113,28 @@ with tab1:
     thought = random.choice(hinglish_quotes)
     st.info(f"✨ **EV's Thought:** {thought}")
     
-    # Text-to-Speech Button for EV's Thought
-    speak_thought = f"""
-    <script>
-    function speakText(text) {{
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-        window.speechSynthesis.speak(utterance);
-    }}
-    </script>
-    <button onclick="speakText('{thought}')" style="background-color:#4CAF50; color:white; padding:8px 16px; border:none; border-radius:5px; cursor:pointer;">
-        🔊 Listen to EV's Thought
-    </button>
-    """
-    components.html(speak_thought, height=50)
+    # Female Voice button for thought
+    components.html(render_voice_button(thought, "thought"), height=45)
 
     user_input = st.text_area("Ask EV anything (Physics, Math, Biology, Python, or Guidance):")
     
     if st.button("Ask EV"):
         if user_input:
-            ev_response = f"That's a fantastic question, Happy! Let's break down '{user_input}' step by step to master it completely."
+            ev_response = f"That is a great question, Happy! Let us break down '{user_input}' step by step so you understand it completely."
             st.session_state.chat_history.append(("Happy", user_input))
             st.session_state.chat_history.append(("EV", ev_response))
         else:
             st.warning("Please enter a question first.")
 
-    # Display Chat History with Voice Playback Option
+    # Display Chat History with Female Voice Button
     if st.session_state.chat_history:
         st.write("### Conversation")
-        for sender, message in st.session_state.chat_history:
+        for idx, (sender, message) in enumerate(st.session_state.chat_history):
             if sender == "Happy":
                 st.markdown(f"**👤 You:** {message}")
             else:
                 st.markdown(f"**🧬 EV:** {message}")
-                # Add voice button for each EV response
-                safe_msg = message.replace("'", "\\'")
-                speak_btn_html = f"""
-                <script>
-                function speak_{abs(hash(message))}() {{
-                    const utterance = new SpeechSynthesisUtterance('{safe_msg}');
-                    window.speechSynthesis.speak(utterance);
-                }}
-                </script>
-                <button onclick="speak_{abs(hash(message))}()" style="background-color:#008CBA; color:white; padding:5px 10px; border:none; border-radius:4px; font-size:12px; cursor:pointer; margin-bottom:10px;">
-                    🔊 Listen to EV
-                </button>
-                """
-                components.html(speak_btn_html, height=45)
+                components.html(render_voice_button(message, f"msg_{idx}"), height=45)
 
 # Tab 2: Trackers
 with tab2:
