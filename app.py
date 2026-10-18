@@ -1,13 +1,14 @@
 import streamlit as st
 import datetime
 import random
+import streamlit.components.v1 as components
 
 # Page Configuration
 st.set_page_config(page_title="EV: personal assistant 🧬", page_icon="🧬", layout="wide")
 
-# Initialize Session State for Password and Tracking
+# Initialize Session State
 if "master_password" not in st.session_state:
-    st.session_state.master_password = "brandnewday"  # Default password
+    st.session_state.master_password = "brandnewday"
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
@@ -17,6 +18,9 @@ if "water_intake" not in st.session_state:
 
 if "sleep_hours" not in st.session_state:
     st.session_state.sleep_hours = 0
+
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
 # --- PASSWORD AUTHENTICATION WALL ---
 if not st.session_state.authenticated:
@@ -33,14 +37,13 @@ if not st.session_state.authenticated:
             st.error("Incorrect Passcode! Try again.")
     st.stop()
 
-# --- MAIN APPLICATION (AFTER LOGIN) ---
+# --- MAIN APPLICATION ---
 st.title("EV: personal assistant 🧬")
 
 # Sidebar Settings & Change Password
 with st.sidebar:
     st.header("⚙️ EV Settings")
     
-    # Change Password Feature
     st.subheader("🔑 Security")
     with st.expander("Change Password"):
         current_p = st.text_input("Current Password", type="password")
@@ -64,26 +67,69 @@ with st.sidebar:
         st.rerun()
 
 # Layout Tabs
-tab1, tab2, tab3 = st.tabs(["💬 Chat & Tutor", "📊 Daily Trackers", "📸 Image Analysis"])
+tab1, tab2, tab3 = st.tabs(["💬 Chat & Voice", "📊 Daily Trackers", "📸 Image Analysis"])
 
-# Tab 1: Chat & Tutor
+# Tab 1: Chat, Tutor & Voice
 with tab1:
-    st.subheader("EV AI Assistant")
+    st.subheader("EV AI Assistant with Voice")
+    
     hinglish_quotes = [
         "Har mushkil ka hal nikal sakta hai, bas thoda focus chahiye! 💡",
         "Aaj ka kaam kal par mat chhodo, Happy bhai! 🚀",
         "Believing in yourself is the first step to success! ✨",
         "Physics aur Math toh bas mind-games hain, hum milkar crack karenge! 🧠"
     ]
-    st.info(f"✨ **EV's Thought:** {random.choice(hinglish_quotes)}")
+    thought = random.choice(hinglish_quotes)
+    st.info(f"✨ **EV's Thought:** {thought}")
     
-    user_input = st.text_area("Ask EV anything (Physics, Math, Biology, Python, or General Guidance):")
+    # Text-to-Speech Button for EV's Thought
+    speak_thought = f"""
+    <script>
+    function speakText(text) {{
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+    }}
+    </script>
+    <button onclick="speakText('{thought}')" style="background-color:#4CAF50; color:white; padding:8px 16px; border:none; border-radius:5px; cursor:pointer;">
+        🔊 Listen to EV's Thought
+    </button>
+    """
+    components.html(speak_thought, height=50)
+
+    user_input = st.text_area("Ask EV anything (Physics, Math, Biology, Python, or Guidance):")
+    
     if st.button("Ask EV"):
         if user_input:
-            st.write(f"**Happy:** {user_input}")
-            st.write(f"**EV:** That's a great question! Let's break down '{user_input}' step by step...")
+            ev_response = f"That's a fantastic question, Happy! Let's break down '{user_input}' step by step to master it completely."
+            st.session_state.chat_history.append(("Happy", user_input))
+            st.session_state.chat_history.append(("EV", ev_response))
         else:
             st.warning("Please enter a question first.")
+
+    # Display Chat History with Voice Playback Option
+    if st.session_state.chat_history:
+        st.write("### Conversation")
+        for sender, message in st.session_state.chat_history:
+            if sender == "Happy":
+                st.markdown(f"**👤 You:** {message}")
+            else:
+                st.markdown(f"**🧬 EV:** {message}")
+                # Add voice button for each EV response
+                safe_msg = message.replace("'", "\\'")
+                speak_btn_html = f"""
+                <script>
+                function speak_{abs(hash(message))}() {{
+                    const utterance = new SpeechSynthesisUtterance('{safe_msg}');
+                    window.speechSynthesis.speak(utterance);
+                }}
+                </script>
+                <button onclick="speak_{abs(hash(message))}()" style="background-color:#008CBA; color:white; padding:5px 10px; border:none; border-radius:4px; font-size:12px; cursor:pointer; margin-bottom:10px;">
+                    🔊 Listen to EV
+                </button>
+                """
+                components.html(speak_btn_html, height=45)
 
 # Tab 2: Trackers
 with tab2:
