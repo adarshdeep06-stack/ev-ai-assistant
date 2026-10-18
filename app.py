@@ -83,9 +83,6 @@ if "study_hours" not in st.session_state:
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-if "greeted" not in st.session_state:
-    st.session_state.greeted = False
-
 # --- PASSWORD AUTHENTICATION WALL ---
 if not st.session_state.authenticated:
     st.markdown("""
@@ -104,10 +101,22 @@ if not st.session_state.authenticated:
     st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
 
-# --- SIDEBAR: MINIMALIST TRACKERS & SETTINGS ---
+# --- SIDEBAR: MINIMALIST TRACKERS, SEARCH HISTORY & SETTINGS ---
 with st.sidebar:
     st.markdown('<div class="glass-box">', unsafe_allow_html=True)
     st.header("⚙️ EV Control Panel")
+    st.markdown("---")
+    
+    # Search History Drawer
+    st.subheader("📜 Search History")
+    with st.expander("View Past Searches"):
+        if st.session_state.chat_history:
+            for idx, (sender, msg) in enumerate(st.session_state.chat_history):
+                if sender == "Happy":
+                    st.markdown(f"**Q{idx//2 + 1}:** {msg}")
+        else:
+            st.write("No search history yet.")
+            
     st.markdown("---")
     
     # Hydration Tracker
@@ -129,7 +138,7 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # Sleep & Wake Reminder Info
+    # Sleep Reminder
     st.subheader("🌙 Sleep Schedule")
     st.info("Wake-up Time: **06:00 AM**\nTarget Sleep: **6 Hours**\nBedtime Target: **12:00 AM**")
     
@@ -159,7 +168,7 @@ with st.sidebar:
 # --- MAIN APPLICATION HEADER ---
 st.markdown('<div class="glass-box"><h1>EV: personal assistant 🧬</h1></div>', unsafe_allow_html=True)
 
-# Safe Voice Button Renderer with Advanced Hinglish Phonetics & Sweet Pitch
+# Safe Voice Button Renderer with Advanced Hinglish Phonetics
 def render_voice_button(text_to_speak, button_id):
     safe_text = text_to_speak.replace("'", "\\'").replace("\n", " ")
     template = """
@@ -321,18 +330,19 @@ components.html("""
     </script>
 """, height=0)
 
-# Trigger auto greeting ("How was your time?") once per session
-if not st.session_state.greeted:
-    greeting_script = """
-    <script>
-    setTimeout(() => {
+# Interactive Tap-to-Wake Greeting Button (Bypasses iOS Safari Audio Restrictions)
+st.markdown('<div class="glass-box">', unsafe_allow_html=True)
+st.write("### 🗣️ EV Greeting")
+greeting_btn = """
+<div>
+    <button onclick="
         const synth = window.parent.window.speechSynthesis;
         if (!synth) return;
-        const greetingText = "Hello Happy! How was your time today?";
-        const utterance = new SpeechSynthesisUtterance(greetingText);
+        synth.cancel();
+        const text = 'Hello Happy! How was your time today?';
+        const utterance = new SpeechSynthesisUtterance(text);
         utterance.pitch = 1.38;
         utterance.rate = 0.94;
-        
         const voices = synth.getVoices();
         const targetVoice = voices.find(v => v.name === 'Samantha') || voices.find(v => v.name.includes('Female')) || voices.find(v => v.lang.includes('en'));
         if (targetVoice) utterance.voice = targetVoice;
@@ -344,30 +354,32 @@ if not st.session_state.greeted:
             if (waveContainer) waveContainer.style.display = 'flex';
             if (subtitleBox) {
                 subtitleBox.style.display = 'block';
-                subtitleBox.innerText = "🗣️ EV: " + greetingText;
+                subtitleBox.innerText = '🗣️ EV: ' + text;
             }
         };
         utterance.onend = function() {
             if (waveContainer) waveContainer.style.display = 'none';
             if (subtitleBox) subtitleBox.style.display = 'none';
         };
-        
         synth.speak(utterance);
-    }, 1200);
-    </script>
-    """
-    components.html(greeting_script, height=0)
-    st.session_state.greeted = True
+    " style="background: linear-gradient(135deg, #0EA5E9, #0284C7); color:white; padding:12px 24px; border:1px solid rgba(56,189,248,0.8); border-radius:12px; font-weight:700; cursor:pointer; width:100%; box-shadow:0 0 15px rgba(56,189,248,0.5);">
+        ✨ Tap to Wake EV & Hear Greeting
+    </button>
+</div>
+"""
+components.html(greeting_btn, height=55)
+st.markdown('</div>', unsafe_allow_html=True)
 
-# --- CLEAN MID-MAIN AREA (Only EV Thought & Ask Question Block) ---
+# --- CLEAN MID-MAIN AREA (EV Thought & Ask Question Block) ---
 st.markdown('<div class="glass-box">', unsafe_allow_html=True)
 st.subheader("✨ EV's Thought")
 
+# Corrected Quotes Array (Replacing 'how' with 'who')
 user_quotes = [
     "Great power comes with Great responsibilities",
     "No amount of money ever bought a second",
     "Agar kisi chiz ko sidhat se chaho to puri kayanat tumhe usse milna me jot jati hai",
-    "Never let anything make you forget how u really are",
+    "Never let anything make you forget who u really are",
     "Agar life mein happy ending na ho to who ending nahi picture abhi baki hai mere dost"
 ]
 thought = random.choice(user_quotes)
@@ -389,10 +401,10 @@ if st.button("Ask EV", use_container_width=True):
         st.warning("Please type a question first.")
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Conversation History
+# Conversation Display
 if st.session_state.chat_history:
     st.markdown('<div class="glass-box">', unsafe_allow_html=True)
-    st.subheader("Conversation History")
+    st.subheader("Current Conversation")
     for idx, (sender, message) in enumerate(st.session_state.chat_history):
         if sender == "Happy":
             st.markdown(f"**👤 You:** {message}")
