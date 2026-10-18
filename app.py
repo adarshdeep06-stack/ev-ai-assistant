@@ -39,6 +39,16 @@ st.markdown("""
         color: #FFFFFF !important;
     }
     
+    /* High Visibility Search / Text Area Fix */
+    .stTextArea textarea, .stTextInput input {
+        background-color: #0B132B !important;
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+        border: 1.5px solid rgba(56, 189, 248, 0.7) !important;
+        border-radius: 12px !important;
+        font-size: 16px !important;
+    }
+    
     /* Custom Futuristic Buttons */
     .stButton>button {
         background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
@@ -53,15 +63,6 @@ st.markdown("""
         background: linear-gradient(135deg, #0ea5e9 0%, #0284C7 100%);
         border-color: #38bdf8;
         box-shadow: 0 0 25px rgba(56, 189, 248, 0.8);
-    }
-    
-    /* High Visibility Input Fields */
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
-        background-color: rgba(15, 23, 42, 0.95) !important;
-        color: #FFFFFF !important;
-        border: 1px solid rgba(56, 189, 248, 0.6) !important;
-        border-radius: 12px !important;
-        font-size: 16px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -134,14 +135,16 @@ with st.sidebar:
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Safe Voice Button Renderer with Higher Sweet Female Pitch (1.38)
+# Safe Voice Button Renderer targeting Parent Window for iOS Safari/Chrome
 def render_voice_button(text_to_speak, button_id):
     safe_text = text_to_speak.replace("'", "\\'").replace("\n", " ")
     template = """
     <div>
         <script>
         function speak_BTN_ID() {
-            window.speechSynthesis.cancel();
+            const synth = window.parent.window.speechSynthesis;
+            if (!synth) return;
+            synth.cancel();
             
             let cleanText = 'SAFE_TEXT'
                 .replace(/agar/gi, 'aghar')
@@ -156,10 +159,10 @@ def render_voice_button(text_to_speak, button_id):
             const utterance = new SpeechSynthesisUtterance(cleanText);
             utterance.lang = 'en-US';
             utterance.rate = 0.94;
-            utterance.pitch = 1.38;  # Higher sweet female pitch
+            utterance.pitch = 1.38;
 
             function setFemaleVoice() {
-                const voices = window.speechSynthesis.getVoices();
+                const voices = synth.getVoices();
                 const targetVoice = voices.find(v => v.name === 'Samantha') ||
                                     voices.find(v => v.name === 'Karen') ||
                                     voices.find(v => v.name.includes('Siri') && v.name.includes('Female')) ||
@@ -175,8 +178,8 @@ def render_voice_button(text_to_speak, button_id):
             }
 
             setFemaleVoice();
-            if (window.speechSynthesis.onvoiceschanged !== undefined) {
-                window.speechSynthesis.onvoiceschanged = setFemaleVoice;
+            if (synth.onvoiceschanged !== undefined) {
+                synth.onvoiceschanged = setFemaleVoice;
             }
 
             const waveContainer = window.parent.document.getElementById('bottom-wave-container');
@@ -198,7 +201,7 @@ def render_voice_button(text_to_speak, button_id):
                 if (subtitleBox) subtitleBox.style.display = 'none';
             };
 
-            window.speechSynthesis.speak(utterance);
+            synth.speak(utterance);
         }
         </script>
         
@@ -209,7 +212,7 @@ def render_voice_button(text_to_speak, button_id):
     """
     return template.replace("BTN_ID", str(button_id)).replace("SAFE_TEXT", safe_text)
 
-# Inject Full-Screen Edge-to-Edge Bottom Waveform Line & Top Subtitles
+# Inject Full-Width Edge-to-Edge Bottom Waveform Line & Top Subtitles
 components.html("""
     <script>
     const doc = window.parent.document;
@@ -291,17 +294,19 @@ components.html("""
     </script>
 """, height=0)
 
-# Trigger auto greeting once per session with sweet high pitch
+# Trigger auto greeting once per session
 if not st.session_state.greeted:
     greeting_script = """
     <script>
     setTimeout(() => {
+        const synth = window.parent.window.speechSynthesis;
+        if (!synth) return;
         const greetingText = "Hello Happy! How was your day today?";
         const utterance = new SpeechSynthesisUtterance(greetingText);
         utterance.pitch = 1.38;
         utterance.rate = 0.94;
         
-        const voices = window.speechSynthesis.getVoices();
+        const voices = synth.getVoices();
         const targetVoice = voices.find(v => v.name === 'Samantha') || voices.find(v => v.name.includes('Female')) || voices.find(v => v.lang.includes('en'));
         if (targetVoice) utterance.voice = targetVoice;
         
@@ -320,7 +325,7 @@ if not st.session_state.greeted:
             if (subtitleBox) subtitleBox.style.display = 'none';
         };
         
-        window.speechSynthesis.speak(utterance);
+        synth.speak(utterance);
     }, 1200);
     </script>
     """
