@@ -1,924 +1,204 @@
 import streamlit as st
-import random
-import re
 import streamlit.components.v1 as components
-import google.generativeai as genai
-
-# Page Configuration
-st.set_page_config(page_title="EV: personal assistant 🧬", page_icon="🧬", layout="wide")
-
-# --- GEMINI API CONFIGURATION ---
-# Replace with your Google Gemini API Key from Google AI Studio (aistudio.google.com)
-GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
-
-if GEMINI_API_KEY and GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE":
-    genai.configure(api_key=GEMINI_API_KEY)
-
-# --- HIGH-VISIBILITY FUTURISTIC LIQUID GLASS STYLING ---
-st.markdown("""
-    <style>
-    /* Main Background */
-    .stApp {
-        background: linear-gradient(135deg, #070B14 0%, #0F172A 50%, #020617 100%);
-        color: #FFFFFF !important;
-        padding-bottom: 140px;
-    }
-    
-    /* Sidebar Styling */
-    [data-testid="stSidebar"] {
-        background-color: rgba(15, 23, 42, 0.95);
-        backdrop-filter: blur(16px);
-        border-right: 1px solid rgba(56, 189, 248, 0.3);
-    }
-    
-    /* Liquid Glass Navy Blue Bubbles with High Text Visibility */
-    .glass-box {
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(30, 58, 138, 0.75) 100%);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-        border: 1.5px solid rgba(56, 189, 248, 0.6);
-        border-radius: 20px;
-        padding: 24px;
-        box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.7);
-        margin-bottom: 22px;
-        color: #FFFFFF !important;
-    }
-    
-    .glass-box *, .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, label, span {
-        color: #FFFFFF !important;
-    }
-    
-    /* High Visibility Search / Text Area Fix */
-    .stTextArea textarea, .stTextInput input {
-        background-color: #0B132B !important;
-        color: #FFFFFF !important;
-        -webkit-text-fill-color: #FFFFFF !important;
-        border: 1.5px solid rgba(56, 189, 248, 0.7) !important;
-        border-radius: 12px !important;
-        font-size: 16px !important;
-    }
-    
-    /* Custom Futuristic Buttons */
-    .stButton>button {
-        background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
-        color: white !important;
-        border: 1px solid rgba(56, 189, 248, 0.8);
-        border-radius: 12px;
-        font-weight: 700;
-        box-shadow: 0 0 15px rgba(2, 132, 199, 0.4);
-        transition: all 0.3s ease;
-    }
-    .stButton>button:hover {
-        background: linear-gradient(135deg, #0ea5e9 0%, #0284C7 100%);
-        border-color: #38bdf8;
-        box-shadow: 0 0 25px rgba(56, 189, 248, 0.8);
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# Initialize Session State
-if "master_password" not in st.session_state:
-    st.session_state.master_password = "brandnewday"
-
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-
-if "water_intake" not in st.session_state:
-    st.session_state.water_intake = 0
-
-if "study_hours" not in st.session_state:
-    st.session_state.study_hours = 0.0
-
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-
-# --- PASSWORD AUTHENTICATION WALL ---
-if not st.session_state.authenticated:
-    st.markdown("""
-        <div style="max-width: 400px; margin: 100px auto; padding: 30px;" class="glass-box">
-            <h2 style="color: #38BDF8; text-align: center;">🔒 EV: personal assistant 🧬</h2>
-            <p style="text-align: center; color: #CBD5E1;">Security Lock Active</p>
-    """, unsafe_allow_html=True)
-    
-    input_pwd = st.text_input("Enter Passcode to Access EV:", type="password")
-    if st.button("Unlock EV", use_container_width=True):
-        if input_pwd == st.session_state.master_password:
-            st.session_state.authenticated = True
-            st.rerun()
-        else:
-            st.error("Incorrect Passcode! Try again.")
-    st.markdown("</div>", unsafe_allow_html=True)
-    st.stop()
-
-# --- SIDEBAR: MINIMALIST TRACKERS, SEARCH HISTORY & SETTINGS ---
-with st.sidebar:
-    st.markdown('<div class="glass-box">', unsafe_allow_html=True)
-    st.header("⚙️ EV Control Panel")
-    st.markdown("---")
-    
-    # Search History Drawer
-    st.subheader("📜 Search History")
-    with st.expander("View Past Searches"):
-        if st.session_state.chat_history:
-            for idx, (sender, msg) in enumerate(st.session_state.chat_history):
-                if sender == "Happy":
-                    st.markdown(f"**Q{idx//2 + 1}:** {msg}")
-        else:
-            st.write("No search history yet.")
-            
-    st.markdown("---")
-    
-    # Hydration Tracker
-    st.subheader("💧 Hydration Tracker")
-    st.write(f"Current Intake: **{st.session_state.water_intake} ml** / 3000 ml")
-    if st.button("✅ Done (+250ml Water)", use_container_width=True):
-        st.session_state.water_intake += 250
-        st.success("Logged 250ml water!")
-        st.rerun()
-        
-    st.markdown("---")
-    
-    # Study Tracker
-    st.subheader("📚 Study Tracker")
-    added_study = st.number_input("Log Study Hours:", min_value=0.0, max_value=16.0, value=float(st.session_state.study_hours), step=0.5)
-    if added_study != st.session_state.study_hours:
-        st.session_state.study_hours = added_study
-    st.write(f"Total Studied: **{st.session_state.study_hours} hrs**")
-    
-    st.markdown("---")
-    
-    # Sleep Reminder
-    st.subheader("🌙 Sleep Schedule")
-    st.info("Wake-up Time: **06:00 AM**\nTarget Sleep: **6 Hours**\nBedtime Target: **12:00 AM**")
-    
-    st.markdown("---")
-    st.subheader("🔑 Security")
-    with st.expander("Change Password"):
-        current_p = st.text_input("Current Password", type="password")
-        new_p = st.text_input("New Password", type="password")
-        confirm_p = st.text_input("Confirm New Password", type="password")
-        
-        if st.button("Update Password"):
-            if current_p != st.session_state.master_password:
-                st.error("Current password does not match!")
-            elif new_p != confirm_p:
-                st.error("New passwords do not match!")
-            elif not new_p:
-                st.error("Password cannot be empty!")
-            else:
-                st.session_state.master_password = new_p
-                st.success("Password updated successfully!")
-
-    if st.button("🔒 Lock EV", use_container_width=True):
-        st.session_state.authenticated = False
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# --- MAIN APPLICATION HEADER ---
-st.markdown('<div class="glass-box"><h1>EV: personal assistant 🧬</h1></div>', unsafe_allow_html=True)
-
-# Safe Voice Button Renderer with Advanced Hinglish Phonetics
-def render_voice_button(text_to_speak, button_id):
-    # Clean text for JS compatibility
-    safe_text = text_to_speak.replace("'", "\\'").replace('"', '\\"').replace("\n", " ")
-    template = """
-    <div>
-        <script>
-        function speak_BTN_ID() {
-            const synth = window.parent.window.speechSynthesis;
-            if (!synth) return;
-            synth.cancel();
-            
-            let cleanText = 'SAFE_TEXT'
-                .replace(/agar/gi, 'aghar')
-                .replace(/chiz/gi, 'cheez')
-                .replace(/sidhat/gi, 'shiddat')
-                .replace(/kayanat/gi, 'kaynaat')
-                .replace(/usse/gi, 'usse')
-                .replace(/milna/gi, 'milne')
-                .replace(/who/gi, 'woh')
-                .replace(/baki/gi, 'baaki')
-                .replace(/hain/gi, 'haein')
-                .replace(/mein/gi, 'main')
-                .replace(/kya/gi, 'kyaa');
-
-            const utterance = new SpeechSynthesisUtterance(cleanText);
-            utterance.lang = 'en-US';
-            utterance.rate = 0.94;
-            utterance.pitch = 1.38;
-
-            function setFemaleVoice() {
-                const voices = synth.getVoices();
-                const targetVoice = voices.find(v => v.name === 'Samantha') ||
-                                    voices.find(v => v.name === 'Karen') ||
-                                    voices.find(v => v.name.includes('Siri') && v.name.includes('Female')) ||
-                                    voices.find(v => v.name.includes('Veena')) ||
-                                    voices.find(v => v.name.includes('Victoria')) ||
-                                    voices.find(v => v.name.includes('Zira')) ||
-                                    voices.find(v => v.name.toLowerCase().includes('female')) ||
-                                    voices.find(v => v.lang.includes('en'));
-
-                if (targetVoice) {
-                    utterance.voice = targetVoice;
-                }
-            }
-
-            setFemaleVoice();
-            if (synth.onvoiceschanged !== undefined) {
-                synth.onvoiceschanged = setFemaleVoice;
-            }
-
-            const waveContainer = window.parent.document.getElementById('bottom-wave-container');
-            const subtitleBox = window.parent.document.getElementById('top-subtitle-box');
-
-            utterance.onstart = function() {
-                if (waveContainer) waveContainer.style.display = 'flex';
-                if (subtitleBox) {
-                    subtitleBox.style.display = 'block';
-                    subtitleBox.innerText = "🗣️ EV: " + 'SAFE_TEXT';
-                }
-            };
-            utterance.onend = function() {
-                if (waveContainer) waveContainer.style.display = 'none';
-                if (subtitleBox) subtitleBox.style.display = 'none';
-            };
-            utterance.onerror = function() {
-                if (waveContainer) waveContainer.style.display = 'none';
-                if (subtitleBox) subtitleBox.style.display = 'none';
-            };
-
-            synth.speak(utterance);
-        }
-        </script>
-        
-        <button onclick="speak_BTN_ID()" style="background: linear-gradient(135deg, #0284C7, #0369A1); color:white; padding:8px 18px; border:1px solid rgba(56,189,248,0.6); border-radius:10px; font-weight:700; cursor:pointer;">
-            🔊 Speak Answer
-        </button>
-    </div>
-    """
-    return template.replace("BTN_ID", str(button_id)).replace("SAFE_TEXT", safe_text)
-
-# Inject Full-Width Edge-to-Edge Bottom Waveform Line & Top Subtitles
-components.html("""
-    <script>
-    const doc = window.parent.document;
-    
-    if (!doc.getElementById('top-subtitle-box')) {
-        const subBox = doc.createElement('div');
-        subBox.id = 'top-subtitle-box';
-        subBox.style.cssText = `
-            position: fixed;
-            top: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            max-width: 900px;
-            background: rgba(15, 23, 42, 0.98);
-            border: 1px solid rgba(56, 189, 248, 0.7);
-            color: #38BDF8;
-            padding: 14px 24px;
-            border-radius: 14px;
-            font-size: 17px;
-            font-weight: 700;
-            text-align: center;
-            z-index: 999999;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            display: none;
-            backdrop-filter: blur(16px);
-        `;
-        doc.body.appendChild(subBox);
-    }
-
-    if (!doc.getElementById('bottom-wave-container')) {
-        const waveBox = doc.createElement('div');
-        waveBox.id = 'bottom-wave-container';
-        waveBox.style.cssText = `
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            width: 100vw;
-            height: 60px;
-            background: rgba(7, 11, 20, 0.98);
-            border-top: 1.5px solid rgba(56, 189, 248, 0.7);
-            display: none;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 10px;
-            z-index: 999999;
-            backdrop-filter: blur(16px);
-            box-shadow: 0 -5px 30px rgba(56, 189, 248, 0.5);
-        `;
-        
-        for(let i=0; i<65; i++){
-            const bar = doc.createElement('div');
-            bar.style.cssText = `
-                width: calc(100vw / 80);
-                height: 8px;
-                background-color: #38BDF8;
-                border-radius: 3px;
-                animation: fullWaveAnim 0.7s infinite ease-in-out;
-                animation-delay: ${(i * 0.025).toFixed(2)}s;
-            `;
-            waveBox.appendChild(bar);
-        }
-
-        if (!doc.getElementById('wave-style-sheet')) {
-            const style = doc.createElement('style');
-            style.id = 'wave-style-sheet';
-            style.innerHTML = `
-                @keyframes fullWaveAnim {
-                    0%, 100% { height: 8px; opacity: 0.4; }
-                    50% { height: 44px; opacity: 1; background-color: #38bdf8; box-shadow: 0 0 15px #38bdf8; }
-                }
-            `;
-            doc.head.appendChild(style);
-        }
-
-        doc.body.appendChild(waveBox);
-    }
-    </script>
-""", height=0)
-
-# Interactive Tap-to-Wake Greeting Button
-st.markdown('<div class="glass-box">', unsafe_allow_html=True)
-st.write("### 🗣️ EV Greeting")
-greeting_btn = """
-<div>
-    <button onclick="
-        const synth = window.parent.window.speechSynthesis;
-        if (!synth) return;
-        synth.cancel();
-        const text = 'Hello Happy! How was your time today?';
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.pitch = 1.38;
-        utterance.rate = 0.94;
-        const voices = synth.getVoices();
-        const targetVoice = voices.find(v => v.name === 'Samantha') || voices.find(v => v.name.includes('Female')) || voices.find(v => v.lang.includes('en'));
-        if (targetVoice) utterance.voice = targetVoice;
-        
-        const waveContainer = window.parent.document.getElementById('bottom-wave-container');
-        const subtitleBox = window.parent.document.getElementById('top-subtitle-box');
-        
-        utterance.onstart = function() {
-            if (waveContainer) waveContainer.style.display = 'flex';
-            if (subtitleBox) {
-                subtitleBox.style.display = 'block';
-                subtitleBox.innerText = '🗣️ EV: ' + text;
-            }
-        };
-        utterance.onend = function() {
-            if (waveContainer) waveContainer.style.display = 'none';
-            if (subtitleBox) subtitleBox.style.display = 'none';
-        };
-        synth.speak(utterance);
-    " style="background: linear-gradient(135deg, #0EA5E9, #0284C7); color:white; padding:12px 24px; border:1px solid rgba(56,189,248,0.8); border-radius:12px; font-weight:700; cursor:pointer; width:100%; box-shadow:0 0 15px rgba(56,189,248,0.5);">
-        ✨ Tap to Wake EV & Hear Greeting
-    </button>
-</div>
-"""
-components.html(greeting_btn, height=55)
-st.markdown('</div>', unsafe_allow_html=True)
-
-# --- CLEAN MID-MAIN AREA (EV Thought & Ask Question Block) ---
-st.markdown('<div class="glass-box">', unsafe_allow_html=True)
-st.subheader("✨ EV's Thought")
-
-# Corrected Quotes Array
-user_quotes = [
-    "Great power comes with Great responsibilities",
-    "No amount of money ever bought a second",
-    "Agar kisi chiz ko sidhat se chaho to puri kayanat tumhe usse milna me jot jati hai",
-    "Never let anything make you forget who u really are",
-    "Agar life mein happy ending na ho to who ending nahi picture abhi baki hai mere dost"
-]
-thought = random.choice(user_quotes)
-st.write(f"💭 {thought}")
-components.html(render_voice_button(thought, "thought"), height=55)
-st.markdown('</div>', unsafe_allow_html=True)
-
-# --- OFFLINE VOICE CALCULATOR ENGINE ---
-def try_offline_calculator(query):
-    # Check if the query is a mathematical expression
-    clean_q = query.lower().replace("multiply", "*").replace("times", "*").replace("divided by", "/").replace("plus", "+").replace("minus", "-").replace("x", "*")
-    math_expr = re.findall(r'[\d\.\+\-\*\/\(\)\s]+', clean_q)
-    if math_expr:
-        expr = "".join(math_expr).strip()
-        if len(expr) > 1:
-            try:
-                result = eval(expr, {"__builtins__": None}, {})
-                return f"The calculated result is {result}."
-            except Exception:
-                pass
-    return None
-
-# --- REAL KNOWLEDGE ENGINE (Online Gemini API + Offline Calculator Fallback) ---
-def generate_smart_answer(query):
-    # 1. Try Gemini Live AI Engine (Online)
-    if GEMINI_API_KEY and GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE":
-        try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            prompt = f"You are EV, a sweet, smart personal assistant for Happy. Answer this question accurately, clearly, and directly in 2-4 plain text sentences suitable for voice speech synthesis (no markdown symbols like asterisks): {query}"
-            response = model.generate_content(prompt)
-            # Remove any Markdown asterisks or hash symbols so voice synthesis reads it cleanly
-            clean_response = response.text.replace("*", "").replace("#", "").strip()
-            return clean_response
-        except Exception as e:
-            pass # Fall through to offline calculator if API fails or offline
-
-    # 2. Try Offline Voice Calculator
-    calc_result = try_offline_calculator(query)
-    if calc_result:
-        return calc_result
-
-    # 3. Fallback message if offline and not a math expression
-    return f"I am currently offline or missing an API key, so I can only function as a voice calculator. Please check your internet connection or add your Gemini API key in settings to answer: '{query}'."
-
-# Ask Question Block
-st.markdown('<div class="glass-box">', unsafe_allow_html=True)
-st.subheader("💬 Ask EV")
-user_input = st.text_area("What is on your mind today, Happy?")
-
-if st.button("Ask EV", use_container_width=True):
-    if user_input:
-        with st.spinner("EV is thinking..."):
-            ev_response = generate_smart_answer(user_input)
-        st.session_state.chat_history.append(("Happy", user_input))
-        st.session_state.chat_history.append(("EV", ev_response))
-    else:
-        st.warning("Please type a question first.")
-st.markdown('</div>', unsafe_allow_html=True)
-
-# Conversation Display
-if st.session_state.chat_history:
-    st.markdown('<div class="glass-box">', unsafe_allow_html=True)
-    st.subheader("Current Conversation")
-    for idx, (sender, message) in enumerate(st.session_state.chat_history):
-        if sender == "Happy":
-            st.markdown(f"**👤 You:** {message}")
-        else:
-            st.markdown(f"**🧬 EV:** {message}")
-            components.html(render_voice_button(message, f"msg_{idx}"), height=55)
-    st.markdown('</div>', unsafe_allow_html=True)
-import streamlit as st
-import random
+import math
 import re
-import streamlit.components.v1 as components
-import google.generativeai as genai
 
-# Page Configuration
-st.set_page_config(page_title="EV: personal assistant 🧬", page_icon="🧬", layout="wide")
+# --- 1. PAGE CONFIGURATION & LIQUID GLASS STYLING ---
+st.set_page_config(page_title="EV Offline Assistant", page_icon="🤖", layout="wide")
 
-# --- GEMINI API CONFIGURATION ---
-# Replace with your Google Gemini API Key from Google AI Studio (aistudio.google.com)
-GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
-
-if GEMINI_API_KEY and GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE":
-    genai.configure(api_key=GEMINI_API_KEY)
-
-# --- HIGH-VISIBILITY FUTURISTIC LIQUID GLASS STYLING ---
 st.markdown("""
-    <style>
-    /* Main Background */
+<style>
+    /* Dark Liquid Glass Styling */
     .stApp {
-        background: linear-gradient(135deg, #070B14 0%, #0F172A 50%, #020617 100%);
-        color: #FFFFFF !important;
-        padding-bottom: 140px;
+        background: linear-gradient(135deg, #0f0c20, #15102a, #060212);
+        color: #e0e0e0;
+        font-family: 'Inter', sans-serif;
     }
-    
-    /* Sidebar Styling */
-    [data-testid="stSidebar"] {
-        background-color: rgba(15, 23, 42, 0.95);
-        backdrop-filter: blur(16px);
-        border-right: 1px solid rgba(56, 189, 248, 0.3);
+    .glass-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
     }
-    
-    /* Liquid Glass Navy Blue Bubbles with High Text Visibility */
-    .glass-box {
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(30, 58, 138, 0.75) 100%);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-        border: 1.5px solid rgba(56, 189, 248, 0.6);
-        border-radius: 20px;
-        padding: 24px;
-        box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.7);
-        margin-bottom: 22px;
-        color: #FFFFFF !important;
-    }
-    
-    .glass-box *, .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, label, span {
-        color: #FFFFFF !important;
-    }
-    
-    /* High Visibility Search / Text Area Fix */
-    .stTextArea textarea, .stTextInput input {
-        background-color: #0B132B !important;
-        color: #FFFFFF !important;
-        -webkit-text-fill-color: #FFFFFF !important;
-        border: 1.5px solid rgba(56, 189, 248, 0.7) !important;
-        border-radius: 12px !important;
-        font-size: 16px !important;
-    }
-    
-    /* Custom Futuristic Buttons */
-    .stButton>button {
-        background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
-        color: white !important;
-        border: 1px solid rgba(56, 189, 248, 0.8);
-        border-radius: 12px;
+    .ev-header {
+        font-size: 2.2rem;
         font-weight: 700;
-        box-shadow: 0 0 15px rgba(2, 132, 199, 0.4);
-        transition: all 0.3s ease;
+        background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
     }
-    .stButton>button:hover {
-        background: linear-gradient(135deg, #0ea5e9 0%, #0284C7 100%);
-        border-color: #38bdf8;
-        box-shadow: 0 0 25px rgba(56, 189, 248, 0.8);
+</style>
+""", unsafe_allow_html=1)
+
+# --- 2. OFFLINE SCIENTIFIC CALCULATOR ENGINE ---
+def ev_scientific_calc(query: str):
+    """Parses text/speech input for scientific operations completely offline."""
+    q = query.lower().strip()
+    
+    # Mathematical Constants & Aliases
+    safe_dict = {
+        'sin': math.sin, 'cos': math.cos, 'tan': math.tan,
+        'asin': math.asin, 'acos': math.acos, 'atan': math.atan,
+        'sqrt': math.sqrt, 'log': math.log10, 'ln': math.log,
+        'exp': math.exp, 'pi': math.pi, 'e': math.e,
+        'factorial': math.factorial, 'radians': math.radians,
+        'degrees': math.degrees, 'pow': math.pow, 'abs': abs
     }
-    </style>
-""", unsafe_allow_html=True)
-
-# Initialize Session State
-if "master_password" not in st.session_state:
-    st.session_state.master_password = "brandnewday"
-
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-
-if "water_intake" not in st.session_state:
-    st.session_state.water_intake = 0
-
-if "study_hours" not in st.session_state:
-    st.session_state.study_hours = 0.0
-
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-
-# --- PASSWORD AUTHENTICATION WALL ---
-if not st.session_state.authenticated:
-    st.markdown("""
-        <div style="max-width: 400px; margin: 100px auto; padding: 30px;" class="glass-box">
-            <h2 style="color: #38BDF8; text-align: center;">🔒 EV: personal assistant 🧬</h2>
-            <p style="text-align: center; color: #CBD5E1;">Security Lock Active</p>
-    """, unsafe_allow_html=True)
     
-    input_pwd = st.text_input("Enter Passcode to Access EV:", type="password")
-    if st.button("Unlock EV", use_container_width=True):
-        if input_pwd == st.session_state.master_password:
-            st.session_state.authenticated = True
-            st.rerun()
-        else:
-            st.error("Incorrect Passcode! Try again.")
-    st.markdown("</div>", unsafe_allow_html=True)
-    st.stop()
-
-# --- SIDEBAR: MINIMALIST TRACKERS, SEARCH HISTORY & SETTINGS ---
-with st.sidebar:
-    st.markdown('<div class="glass-box">', unsafe_allow_html=True)
-    st.header("⚙️ EV Control Panel")
-    st.markdown("---")
+    # Natural language query replacements
+    clean_q = re.sub(r'square root of ([0-9.]+)', r'sqrt(\1)', q)
+    clean_q = re.sub(r'log of ([0-9.]+)', r'log(\1)', clean_q)
+    clean_q = re.sub(r'sin of ([0-9.]+)', r'sin(radians(\1))', clean_q)
+    clean_q = re.sub(r'cos of ([0-9.]+)', r'cos(radians(\1))', clean_q)
+    clean_q = re.sub(r'tan of ([0-9.]+)', r'tan(radians(\1))', clean_q)
+    clean_q = clean_q.replace('x', '*').replace('^', '**')
+    clean_q = re.sub(r'[^0-9\.\+\-\*\/\(\)\,\s\a-z\_]', '', clean_q)
     
-    # Search History Drawer
-    st.subheader("📜 Search History")
-    with st.expander("View Past Searches"):
-        if st.session_state.chat_history:
-            for idx, (sender, msg) in enumerate(st.session_state.chat_history):
-                if sender == "Happy":
-                    st.markdown(f"**Q{idx//2 + 1}:** {msg}")
-        else:
-            st.write("No search history yet.")
-            
-    st.markdown("---")
-    
-    # Hydration Tracker
-    st.subheader("💧 Hydration Tracker")
-    st.write(f"Current Intake: **{st.session_state.water_intake} ml** / 3000 ml")
-    if st.button("✅ Done (+250ml Water)", use_container_width=True):
-        st.session_state.water_intake += 250
-        st.success("Logged 250ml water!")
-        st.rerun()
-        
-    st.markdown("---")
-    
-    # Study Tracker
-    st.subheader("📚 Study Tracker")
-    added_study = st.number_input("Log Study Hours:", min_value=0.0, max_value=16.0, value=float(st.session_state.study_hours), step=0.5)
-    if added_study != st.session_state.study_hours:
-        st.session_state.study_hours = added_study
-    st.write(f"Total Studied: **{st.session_state.study_hours} hrs**")
-    
-    st.markdown("---")
-    
-    # Sleep Reminder
-    st.subheader("🌙 Sleep Schedule")
-    st.info("Wake-up Time: **06:00 AM**\nTarget Sleep: **6 Hours**\nBedtime Target: **12:00 AM**")
-    
-    st.markdown("---")
-    st.subheader("🔑 Security")
-    with st.expander("Change Password"):
-        current_p = st.text_input("Current Password", type="password")
-        new_p = st.text_input("New Password", type="password")
-        confirm_p = st.text_input("Confirm New Password", type="password")
-        
-        if st.button("Update Password"):
-            if current_p != st.session_state.master_password:
-                st.error("Current password does not match!")
-            elif new_p != confirm_p:
-                st.error("New passwords do not match!")
-            elif not new_p:
-                st.error("Password cannot be empty!")
-            else:
-                st.session_state.master_password = new_p
-                st.success("Password updated successfully!")
+    try:
+        # Safe mathematical evaluation
+        res = eval(clean_q, {"__builtins__": None}, safe_dict)
+        if isinstance(res, float):
+            res = round(res, 6)
+        return f"Calculated Result: {res}", str(res)
+    except Exception:
+        return "I am operating in offline mode. Enter a scientific calculation (e.g., 'sqrt(144)', 'sin(45)', '2^8').", None
 
-    if st.button("🔒 Lock EV", use_container_width=True):
-        st.session_state.authenticated = False
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# --- MAIN APPLICATION HEADER ---
-st.markdown('<div class="glass-box"><h1>EV: personal assistant 🧬</h1></div>', unsafe_allow_html=True)
-
-# Safe Voice Button Renderer with Advanced Hinglish Phonetics
-def render_voice_button(text_to_speak, button_id):
-    # Clean text for JS compatibility
-    safe_text = text_to_speak.replace("'", "\\'").replace('"', '\\"').replace("\n", " ")
-    template = """
-    <div>
-        <script>
-        function speak_BTN_ID() {
-            const synth = window.parent.window.speechSynthesis;
-            if (!synth) return;
-            synth.cancel();
-            
-            let cleanText = 'SAFE_TEXT'
-                .replace(/agar/gi, 'aghar')
-                .replace(/chiz/gi, 'cheez')
-                .replace(/sidhat/gi, 'shiddat')
-                .replace(/kayanat/gi, 'kaynaat')
-                .replace(/usse/gi, 'usse')
-                .replace(/milna/gi, 'milne')
-                .replace(/who/gi, 'woh')
-                .replace(/baki/gi, 'baaki')
-                .replace(/hain/gi, 'haein')
-                .replace(/mein/gi, 'main')
-                .replace(/kya/gi, 'kyaa');
-
-            const utterance = new SpeechSynthesisUtterance(cleanText);
-            utterance.lang = 'en-US';
-            utterance.rate = 0.94;
-            utterance.pitch = 1.38;
-
-            function setFemaleVoice() {
-                const voices = synth.getVoices();
-                const targetVoice = voices.find(v => v.name === 'Samantha') ||
-                                    voices.find(v => v.name === 'Karen') ||
-                                    voices.find(v => v.name.includes('Siri') && v.name.includes('Female')) ||
-                                    voices.find(v => v.name.includes('Veena')) ||
-                                    voices.find(v => v.name.includes('Victoria')) ||
-                                    voices.find(v => v.name.includes('Zira')) ||
-                                    voices.find(v => v.name.toLowerCase().includes('female')) ||
-                                    voices.find(v => v.lang.includes('en'));
-
-                if (targetVoice) {
-                    utterance.voice = targetVoice;
-                }
-            }
-
-            setFemaleVoice();
-            if (synth.onvoiceschanged !== undefined) {
-                synth.onvoiceschanged = setFemaleVoice;
-            }
-
-            const waveContainer = window.parent.document.getElementById('bottom-wave-container');
-            const subtitleBox = window.parent.document.getElementById('top-subtitle-box');
-
-            utterance.onstart = function() {
-                if (waveContainer) waveContainer.style.display = 'flex';
-                if (subtitleBox) {
-                    subtitleBox.style.display = 'block';
-                    subtitleBox.innerText = "🗣️ EV: " + 'SAFE_TEXT';
-                }
-            };
-            utterance.onend = function() {
-                if (waveContainer) waveContainer.style.display = 'none';
-                if (subtitleBox) subtitleBox.style.display = 'none';
-            };
-            utterance.onerror = function() {
-                if (waveContainer) waveContainer.style.display = 'none';
-                if (subtitleBox) subtitleBox.style.display = 'none';
-            };
-
-            synth.speak(utterance);
-        }
-        </script>
-        
-        <button onclick="speak_BTN_ID()" style="background: linear-gradient(135deg, #0284C7, #0369A1); color:white; padding:8px 18px; border:1px solid rgba(56,189,248,0.6); border-radius:10px; font-weight:700; cursor:pointer;">
-            🔊 Speak Answer
-        </button>
-    </div>
-    """
-    return template.replace("BTN_ID", str(button_id)).replace("SAFE_TEXT", safe_text)
-
-# Inject Full-Width Edge-to-Edge Bottom Waveform Line & Top Subtitles
-components.html("""
+# --- 3. VOICE SYNTHESIS HELPER ---
+def speak_response(text):
+    """Uses client-side browser speech synthesis (Works completely offline)."""
+    clean_text = text.replace("'", "\\'")
+    html_code = f"""
     <script>
-    const doc = window.parent.document;
-    
-    if (!doc.getElementById('top-subtitle-box')) {
-        const subBox = doc.createElement('div');
-        subBox.id = 'top-subtitle-box';
-        subBox.style.cssText = `
-            position: fixed;
-            top: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            max-width: 900px;
-            background: rgba(15, 23, 42, 0.98);
-            border: 1px solid rgba(56, 189, 248, 0.7);
-            color: #38BDF8;
-            padding: 14px 24px;
-            border-radius: 14px;
-            font-size: 17px;
-            font-weight: 700;
-            text-align: center;
-            z-index: 999999;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            display: none;
-            backdrop-filter: blur(16px);
-        `;
-        doc.body.appendChild(subBox);
-    }
-
-    if (!doc.getElementById('bottom-wave-container')) {
-        const waveBox = doc.createElement('div');
-        waveBox.id = 'bottom-wave-container';
-        waveBox.style.cssText = `
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            width: 100vw;
-            height: 60px;
-            background: rgba(7, 11, 20, 0.98);
-            border-top: 1.5px solid rgba(56, 189, 248, 0.7);
-            display: none;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 10px;
-            z-index: 999999;
-            backdrop-filter: blur(16px);
-            box-shadow: 0 -5px 30px rgba(56, 189, 248, 0.5);
-        `;
-        
-        for(let i=0; i<65; i++){
-            const bar = doc.createElement('div');
-            bar.style.cssText = `
-                width: calc(100vw / 80);
-                height: 8px;
-                background-color: #38BDF8;
-                border-radius: 3px;
-                animation: fullWaveAnim 0.7s infinite ease-in-out;
-                animation-delay: ${(i * 0.025).toFixed(2)}s;
-            `;
-            waveBox.appendChild(bar);
-        }
-
-        if (!doc.getElementById('wave-style-sheet')) {
-            const style = doc.createElement('style');
-            style.id = 'wave-style-sheet';
-            style.innerHTML = `
-                @keyframes fullWaveAnim {
-                    0%, 100% { height: 8px; opacity: 0.4; }
-                    50% { height: 44px; opacity: 1; background-color: #38bdf8; box-shadow: 0 0 15px #38bdf8; }
-                }
-            `;
-            doc.head.appendChild(style);
-        }
-
-        doc.body.appendChild(waveBox);
-    }
+        var msg = new SpeechSynthesisUtterance('{clean_text}');
+        msg.rate = 1.0;
+        msg.pitch = 1.1;
+        window.speechSynthesis.speak(msg);
     </script>
-""", height=0)
+    """
+    components.html(html_code, height=0, width=0)
 
-# Interactive Tap-to-Wake Greeting Button
-st.markdown('<div class="glass-box">', unsafe_allow_html=True)
-st.write("### 🗣️ EV Greeting")
-greeting_btn = """
-<div>
-    <button onclick="
-        const synth = window.parent.window.speechSynthesis;
-        if (!synth) return;
-        synth.cancel();
-        const text = 'Hello Happy! How was your time today?';
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.pitch = 1.38;
-        utterance.rate = 0.94;
-        const voices = synth.getVoices();
-        const targetVoice = voices.find(v => v.name === 'Samantha') || voices.find(v => v.name.includes('Female')) || voices.find(v => v.lang.includes('en'));
-        if (targetVoice) utterance.voice = targetVoice;
-        
-        const waveContainer = window.parent.document.getElementById('bottom-wave-container');
-        const subtitleBox = window.parent.document.getElementById('top-subtitle-box');
-        
-        utterance.onstart = function() {
-            if (waveContainer) waveContainer.style.display = 'flex';
-            if (subtitleBox) {
-                subtitleBox.style.display = 'block';
-                subtitleBox.innerText = '🗣️ EV: ' + text;
+# --- 4. APP LAYOUT ---
+st.markdown("<h1 class='ev-header'>🤖 EV: Offline Assistant & Arcade</h1>", unsafe_allow_html=1)
+
+tab_calc, tab_game = st.tabs(["🧮 Scientific Calculator", "🎮 Jewel Match Game"])
+
+# --- TAB 1: SCIENTIFIC CALCULATOR ---
+with tab_calc:
+    st.markdown("<div class='glass-card'><h3>EV Voice & Scientific Math Engine</h3><p>Supported operations: sin, cos, tan, sqrt, log, ln, power (^), factorials, constants (pi, e).</p></div>", unsafe_allow_html=1)
+    
+    # Quick Input Reference Buttons
+    col_a, col_b, col_c, col_d = st.columns(4)
+    if col_a.button("sqrt(144)"): st.session_state['user_input'] = "sqrt(144)"
+    if col_b.button("sin(45 degrees)"): st.session_state['user_input'] = "sin of 45"
+    if col_c.button("log(100)"): st.session_state['user_input'] = "log(100)"
+    if col_d.button("factorial(5)"): st.session_state['user_input'] = "factorial(5)"
+    
+    user_query = st.text_input("Speak or Type expression for EV:", key="user_input", placeholder="e.g. 15 * log(50) or sqrt(256)")
+    
+    if user_query:
+        response_text, result_val = ev_scientific_calc(user_query)
+        st.markdown(f"<div class='glass-card'><h4>EV Response:</h4><p style='font-size: 1.3rem; color: #00d2ff;'>{response_text}</p></div>", unsafe_allow_html=1)
+        if result_val:
+            speak_response(f"The result is {result_val}")
+
+# --- TAB 2: EMBEDDED HTML5 MATCH-3 GAME ---
+with tab_game:
+    st.markdown("<div class='glass-card'><h3>EV Arcade: Match-3 Gem Crusher</h3><p>Click two adjacent tiles to swap them and match 3 or more in a row!</p></div>", unsafe_allow_html=1)
+    
+    # Complete, Standalone HTML5/JS Match-3 Game Canvas
+    game_code = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+        body { margin: 0; background: transparent; text-align: center; color: white; font-family: sans-serif; }
+        #canvas { background: rgba(0,0,0,0.5); border-radius: 12px; border: 2px solid #3a7bd5; cursor: pointer; }
+        .score-board { font-size: 20px; margin-bottom: 10px; font-weight: bold; color: #00d2ff; }
+    </style>
+    </head>
+    <body>
+    <div class="score-board">Score: <span id="score">0</span></div>
+    <canvas id="canvas" width="320" height="320"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const grid = 8, size = 40;
+        const colors = ['#ff4d4d', '#33dd33', '#3399ff', '#ffcc00', '#cc66ff'];
+        let board = [], score = 0, selected = null;
+
+        function init() {
+            for(let r=0; r<grid; r++) {
+                board[r] = [];
+                for(let c=0; c<grid; c++) board[r][c] = Math.floor(Math.random()*colors.length);
             }
-        };
-        utterance.onend = function() {
-            if (waveContainer) waveContainer.style.display = 'none';
-            if (subtitleBox) subtitleBox.style.display = 'none';
-        };
-        synth.speak(utterance);
-    " style="background: linear-gradient(135deg, #0EA5E9, #0284C7); color:white; padding:12px 24px; border:1px solid rgba(56,189,248,0.8); border-radius:12px; font-weight:700; cursor:pointer; width:100%; box-shadow:0 0 15px rgba(56,189,248,0.5);">
-        ✨ Tap to Wake EV & Hear Greeting
-    </button>
-</div>
-"""
-components.html(greeting_btn, height=55)
-st.markdown('</div>', unsafe_allow_html=True)
+            draw();
+        }
 
-# --- CLEAN MID-MAIN AREA (EV Thought & Ask Question Block) ---
-st.markdown('<div class="glass-box">', unsafe_allow_html=True)
-st.subheader("✨ EV's Thought")
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for(let r=0; r<grid; r++) {
+                for(let c=0; c<grid; c++) {
+                    ctx.fillStyle = colors[board[r][c]];
+                    ctx.beginPath();
+                    ctx.arc(c*size + size/2, r*size + size/2, size/2 - 4, 0, Math.PI*2);
+                    ctx.fill();
+                    if(selected && selected.r === r && selected.c === c) {
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
 
-# Corrected Quotes Array
-user_quotes = [
-    "Great power comes with Great responsibilities",
-    "No amount of money ever bought a second",
-    "Agar kisi chiz ko sidhat se chaho to puri kayanat tumhe usse milna me jot jati hai",
-    "Never let anything make you forget who u really are",
-    "Agar life mein happy ending na ho to who ending nahi picture abhi baki hai mere dost"
-]
-thought = random.choice(user_quotes)
-st.write(f"💭 {thought}")
-components.html(render_voice_button(thought, "thought"), height=55)
-st.markdown('</div>', unsafe_allow_html=True)
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const c = Math.floor((e.clientX - rect.left) / size);
+            const r = Math.floor((e.clientY - rect.top) / size);
+            
+            if(!selected) {
+                selected = {r, c};
+            } else {
+                let dr = Math.abs(selected.r - r), dc = Math.abs(selected.c - c);
+                if((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
+                    let temp = board[selected.r][selected.c];
+                    board[selected.r][selected.c] = board[r][c];
+                    board[r][c] = temp;
+                    checkMatches();
+                }
+                selected = null;
+            }
+            draw();
+        });
 
-# --- OFFLINE VOICE CALCULATOR ENGINE ---
-def try_offline_calculator(query):
-    # Check if the query is a mathematical expression
-    clean_q = query.lower().replace("multiply", "*").replace("times", "*").replace("divided by", "/").replace("plus", "+").replace("minus", "-").replace("x", "*")
-    math_expr = re.findall(r'[\d\.\+\-\*\/\(\)\s]+', clean_q)
-    if math_expr:
-        expr = "".join(math_expr).strip()
-        if len(expr) > 1:
-            try:
-                result = eval(expr, {"__builtins__": None}, {})
-                return f"The calculated result is {result}."
-            except Exception:
-                pass
-    return None
-
-# --- REAL KNOWLEDGE ENGINE (Online Gemini API + Offline Calculator Fallback) ---
-def generate_smart_answer(query):
-    # 1. Try Gemini Live AI Engine (Online)
-    if GEMINI_API_KEY and GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE":
-        try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            prompt = f"You are EV, a sweet, smart personal assistant for Happy. Answer this question accurately, clearly, and directly in 2-4 plain text sentences suitable for voice speech synthesis (no markdown symbols like asterisks): {query}"
-            response = model.generate_content(prompt)
-            # Remove any Markdown asterisks or hash symbols so voice synthesis reads it cleanly
-            clean_response = response.text.replace("*", "").replace("#", "").strip()
-            return clean_response
-        except Exception as e:
-            pass # Fall through to offline calculator if API fails or offline
-
-    # 2. Try Offline Voice Calculator
-    calc_result = try_offline_calculator(query)
-    if calc_result:
-        return calc_result
-
-    # 3. Fallback message if offline and not a math expression
-    return f"I am currently offline or missing an API key, so I can only function as a voice calculator. Please check your internet connection or add your Gemini API key in settings to answer: '{query}'."
-
-# Ask Question Block
-st.markdown('<div class="glass-box">', unsafe_allow_html=True)
-st.subheader("💬 Ask EV")
-user_input = st.text_area("What is on your mind today, Happy?")
-
-if st.button("Ask EV", use_container_width=True):
-    if user_input:
-        with st.spinner("EV is thinking..."):
-            ev_response = generate_smart_answer(user_input)
-        st.session_state.chat_history.append(("Happy", user_input))
-        st.session_state.chat_history.append(("EV", ev_response))
-    else:
-        st.warning("Please type a question first.")
-st.markdown('</div>', unsafe_allow_html=True)
-
-# Conversation Display
-if st.session_state.chat_history:
-    st.markdown('<div class="glass-box">', unsafe_allow_html=True)
-    st.subheader("Current Conversation")
-    for idx, (sender, message) in enumerate(st.session_state.chat_history):
-        if sender == "Happy":
-            st.markdown(f"**👤 You:** {message}")
-        else:
-            st.markdown(f"**🧬 EV:** {message}")
-            components.html(render_voice_button(message, f"msg_{idx}"), height=55)
-    st.markdown('</div>', unsafe_allow_html=True)
+        function checkMatches() {
+            let matched = false;
+            for(let r=0; r<grid; r++) {
+                for(let c=0; c<grid-2; c++) {
+                    let val = board[r][c];
+                    if(val !== -1 && val === board[r][c+1] && val === board[r][c+2]) {
+                        board[r][c] = board[r][c+1] = board[r][c+2] = -1;
+                        score += 30; matched = true;
+                    }
+                }
+            }
+            if(matched) {
+                document.getElementById('score').innerText = score;
+                setTimeout(() => {
+                    for(let r=0; r<grid; r++)
+                        for(let c=0; c<grid; c++)
+                            if(board[r][c] === -1) board[r][c] = Math.floor(Math.random()*colors.length);
+                    draw();
+                }, 300);
+            }
+        }
+        init();
+    </script>
+    </body>
+    </html>
+    """
+    components.html(game_code, height=400)
