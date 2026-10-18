@@ -175,13 +175,12 @@ with tab_calc:
         # Format string for Python evaluation
         parsed = expr.replace("^", "**").replace("pi", "math.pi").replace("e", "math.e")
         parsed = re.sub(r'sqrt\(', 'math.sqrt(', parsed)
-        parsed = re.sub(r'sin\(', 'math.sin(math.radians(', parsed) # degrees default
+        parsed = re.sub(r'sin\(', 'math.sin(math.radians(', parsed)
         parsed = re.sub(r'cos\(', 'math.cos(math.radians(', parsed)
         parsed = re.sub(r'tan\(', 'math.tan(math.radians(', parsed)
         parsed = re.sub(r'log\(', 'math.log10(', parsed)
         parsed = re.sub(r'ln\(', 'math.log(', parsed)
         
-        # Balance parenthetical conversions for trig
         trig_count = expr.count("sin(") + expr.count("cos(") + expr.count("tan(")
         parsed += ")" * trig_count
 
@@ -196,13 +195,11 @@ with tab_calc:
             for s in steps:
                 st.markdown(f"<div class='step-line'>{s}</div>", unsafe_allow_html=True)
 
-            # Record to history
             if not st.session_state.history or st.session_state.history[-1]['q'] != expr:
                 st.session_state.history.append({
                     'q': expr, 'r': str(res), 't': datetime.now().strftime("%H:%M")
                 })
             
-            # Speak aloud if requested
             speak(f"The answer is {res}")
 
         except Exception:
@@ -215,7 +212,6 @@ with tab_puzzle:
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
     st.markdown(f"<h3>📰 Daily Indian Newspaper Word Search Grid</h3><p style='color:#94A3B8;'>Date: {date.today().strftime('%B %d, %Y')}</p>", unsafe_allow_html=True)
     
-    # 10x10 Word Search Grid containing 12 hidden words
     GRID = [
         ["I", "N", "D", "I", "A", "M", "A", "T", "H", "S"],
         ["S", "C", "I", "E", "N", "C", "E", "P", "E", "N"],
@@ -223,7 +219,10 @@ with tab_puzzle:
         ["A", "E", "A", "R", "T", "H", "C", "O", "D", "E"],
         ["C", "A", "R", "D", "B", "R", "A", "I", "N", "S"],
         ["E", "M", "O", "O", "N", "L", "I", "G", "H", "T"],
-        ["T", "R]
+        ["T", "R", "I", "G", "O", "N", "O", "M", "E", "T"],
+        ["S", "P", "A", "C", "E", "P", "Y", "T", "H", "O"],
+        ["N", "U", "M", "B", "E", "R", "F", "I", "V", "E"],
+        ["W", "A", "T", "E", "R", "F", "A", "L", "L", "S"]
     ]
 
     WORDS_12 = {
@@ -241,7 +240,6 @@ with tab_puzzle:
         "CARD": "Paper object or ticket"
     }
 
-    # Display Grid
     for row in GRID:
         st.markdown(f"<div class='grid-row'>{' '.join(row)}</div>", unsafe_allow_html=True)
 
@@ -267,7 +265,6 @@ with tab_puzzle:
         else:
             st.error("Word not in list or incorrect!")
 
-    # Complete Puzzle Check Popup
     if len(st.session_state.solved_words) == 12:
         st.markdown("""
         <div style='background: #15803d; color: white; padding: 20px; border-radius: 12px; text-align: center; margin-top: 15px;'>
