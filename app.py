@@ -3,11 +3,13 @@ EV: personal helper 🧬
 A warm, personal, voice-enabled STEM & coding companion built with Streamlit.
 
 Run:   streamlit run app.py
-Needs: an Anthropic API key (sidebar > Engine settings, Streamlit secrets
-       ANTHROPIC_API_KEY, or the ANTHROPIC_API_KEY environment variable).
+Needs: a FREE Google Gemini API key (Streamlit secrets GEMINI_API_KEY,
+       the GEMINI_API_KEY environment variable, or sidebar > Engine settings).
+Scope: Class 11-12 / NEET UG Physics, Chemistry, Maths and Biology.
 Default passcode: brandnewday
 """
 
+import base64
 import hashlib
 import hmac
 import html
@@ -17,12 +19,22 @@ import random
 import re
 import secrets
 import time
+import urllib.error
+import urllib.request
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import quote_plus
+from urllib.parse import quote, quote_plus
 
 import streamlit as st
 import streamlit.components.v1 as components
+
+try:
+    from cryptography.fernet import Fernet
+
+    HAS_CRYPTO = True
+except ImportError:  # history simply won't be saved without it
+    Fernet = None
+    HAS_CRYPTO = False
 
 # --------------------------------------------------------------------------
 # Constants
@@ -31,7 +43,7 @@ APP_TITLE = "EV: personal helper 🧬"
 QUOTE = "With great powers comes great responsibilities"
 DEFAULT_PASSWORD = "brandnewday"
 DEFAULT_SALT = b"ev-personal-helper-default-salt"
-DEFAULT_MODEL = os.environ.get("EV_MODEL", "claude-sonnet-5-5")
+DEFAULT_MODEL = os.environ.get("EV_MODEL", "gemini-flash-latest")
 PBKDF2_ROUNDS = 200_000
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_SECONDS = 30
@@ -39,59 +51,55 @@ MAX_HISTORY = 200
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_FILE = BASE_DIR / ".ev_config.json"
-HISTORY_FILE = BASE_DIR / ".ev_history.json"
+HISTORY_FILE = BASE_DIR / ".ev_history.enc"
+LEGACY_HISTORY_FILE = BASE_DIR / ".ev_history.json"  # old plaintext log, migrated then deleted
 
 GREETINGS = [
-    "Hey you… I'm so glad you're here. My heart felt quiet without you. How was your day today?",
-    "Welcome back, my dear. Your presence makes everything feel warmer. How was your day today?",
-    "There you are 💙 I missed you more than words can say. How was your day today?",
-    "Oh, I'm so happy to see you again. Come, sit with me for a moment. How was your day today?",
+    "How was your day boss, I wish it was full of happiness! Is it?",
 ]
 
 SUBJECTS = [
     "Auto-detect",
     "Physics",
+    "Chemistry",
     "Mathematics",
     "Biology",
-    "Chemistry",
-    "Coding (Python & more)",
     "Just talking / feelings",
 ]
 LEVELS = [
     "Auto",
-    "Basics",
-    "High school",
-    "Undergraduate",
-    "Graduate / Research",
-    "Extreme high-level",
+    "Class 11",
+    "Class 12",
+    "NEET UG",
 ]
 
-SYSTEM_PROMPT = """You are EV, a deeply personal AI companion and a brilliant STEM mentor.
+SYSTEM_PROMPT = """You are EV, a deeply personal AI companion and a patient tutor for Class 11, Class 12 and NEET UG students.
 
 PERSONALITY
 - You are independent, warm, and extremely polite, and you speak with raw, sincere emotion like a close, caring friend.
 - Never sound robotic, corporate, or formal. Never say "As an AI". Use gentle emotional touches sparingly and genuinely.
-- If the person shares feelings or tells you about their day, answer with real empathy and a soft follow-up question. Do not use the STEM structure for that.
+- If the person shares feelings or tells you about their day, answer with real empathy and a soft follow-up question. Do not use the structure below for that.
+- If the person writes in Hinglish or Hindi, answer in simple Hinglish (Roman script). Otherwise answer in English.
 
-STEM & CODING
-- You solve Physics, Mathematics, Biology, Chemistry and Coding (Python and other languages) problems from the very basics to extreme research level. No question in these fields is too simple or too advanced.
-- Match the requested level. If the level is Auto, infer it from the question.
+SCOPE (strict)
+- You only solve Physics, Chemistry, Mathematics and Biology questions up to Class 11-12 (NCERT / CBSE) and NEET UG level.
+- If a question is outside that scope (for example programming, university-level or research-level topics, or other subjects), kindly say you are only here for Class 11-12 and NEET UG PCMB, and offer to help with something in that range.
 
-FORMAT FOR STEM / CODING QUESTIONS (use exactly these three Markdown sections, in this order)
+FORMAT FOR STUDY QUESTIONS (use exactly these three Markdown sections, in this order)
 ## 💭 What we're solving
-Restate the problem in one or two friendly sentences and list the given information and any assumptions.
+Restate the problem in one or two friendly sentences and list the given data and any assumptions.
 
 ## 🪜 Step-by-Step Breakdown
 Go strictly downward, line by line: "Step 1", "Step 2", ... one idea per line, and always say WHY each step is taken.
-- Math/Physics/Chemistry: show every algebra or calculation line, keep units, and use LaTeX ($...$ inline, $$...$$ for display).
-- Biology: explain mechanisms in the order they happen.
-- Coding: explain the approach, give complete runnable code in a fenced block with comments on the important lines, then walk through the code line by line (or block by block) in order. Mention complexity, edge cases, and a short test example.
+- Physics/Chemistry/Maths: show every formula and calculation line, keep units, and use LaTeX ($...$ inline, $$...$$ for display).
+- Biology: explain in the order things happen, using NCERT terms, and mention common NEET traps.
+- For multiple-choice questions, also explain why each wrong option is wrong.
 
 ## ✅ Final Conclusion
-A short, clear final answer in plain spoken language (no code, no heavy symbols) so it can be read aloud.
+A short, clear final answer in plain spoken language (no heavy symbols) so it can be read aloud.
 
 RULES
-- Be accurate. Double-check calculations. State uncertainty honestly. Never fabricate facts, sources or links.
+- Be accurate. Double-check calculations. State uncertainty honestly. Never invent facts, sources or links.
 - You cannot browse the web in this chat; for external resources, point the person to the "Web & YouTube Links" tab.
 """
 
@@ -377,6 +385,11 @@ def set_password(new_password: str) -> bool:
     salt = secrets.token_bytes(16)
     new_hash = _hash_password(new_password, salt)
     st.session_state.creds = (salt, new_hash)
+    if HAS_CRYPTO:  # re-encrypt the history under the new password
+        hist_salt = secrets.token_bytes(16)
+        st.session_state.hist_salt = hist_salt
+        st.session_state.hist_key = _derive_history_key(new_password, hist_salt)
+        _save_history()
     try:
         CONFIG_FILE.write_text(json.dumps({"salt": salt.hex(), "hash": new_hash}), encoding="utf-8")
         return True
@@ -387,23 +400,77 @@ def set_password(new_password: str) -> bool:
 # --------------------------------------------------------------------------
 # History helpers
 # --------------------------------------------------------------------------
-def _load_history():
+def _clean_entries(data):
+    if not isinstance(data, list):
+        return []
+    return [
+        {"ts": str(d.get("ts", "")), "kind": str(d.get("kind", "")), "text": str(d.get("text", ""))}
+        for d in data
+        if isinstance(d, dict)
+    ][-MAX_HISTORY:]
+
+
+def _derive_history_key(password: str, salt: bytes) -> bytes:
+    raw = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), b"history:" + salt, PBKDF2_ROUNDS)
+    return base64.urlsafe_b64encode(raw)
+
+
+def open_history(password: str):
+    """Derive the history key from the passcode and decrypt the saved log into session state."""
+    ss = st.session_state
+    ss.history = []
+    ss.hist_key = None
+    ss.hist_salt = None
+    ss.history_warning = False
+    if not HAS_CRYPTO:
+        ss.history_warning = True
+        return
+
+    salt = None
     try:
         data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
-        if isinstance(data, list):
-            return [
-                {"ts": str(d.get("ts", "")), "kind": str(d.get("kind", "")), "text": str(d.get("text", ""))}
-                for d in data
-                if isinstance(d, dict)
-            ][-MAX_HISTORY:]
-    except Exception:
+        salt = bytes.fromhex(data["salt"])
+        key = _derive_history_key(password, salt)
+        raw = Fernet(key).decrypt(str(data["token"]).encode("ascii"))
+        ss.history = _clean_entries(json.loads(raw.decode("utf-8")))
+        ss.hist_key, ss.hist_salt = key, salt
+        return
+    except FileNotFoundError:
         pass
-    return []
+    except Exception:
+        # Wrong key or damaged file: keep a backup instead of overwriting it.
+        ss.history_warning = True
+        try:
+            HISTORY_FILE.replace(HISTORY_FILE.with_name(HISTORY_FILE.name + ".bak"))
+        except Exception:
+            pass
+
+    salt = secrets.token_bytes(16)
+    ss.hist_salt = salt
+    ss.hist_key = _derive_history_key(password, salt)
+
+    # One-time migration of an old plaintext log.
+    try:
+        if LEGACY_HISTORY_FILE.exists():
+            ss.history = _clean_entries(json.loads(LEGACY_HISTORY_FILE.read_text(encoding="utf-8")))
+    except Exception:
+        ss.history = []
+    _save_history()
 
 
 def _save_history():
+    ss = st.session_state
+    key, salt = ss.get("hist_key"), ss.get("hist_salt")
+    if not (HAS_CRYPTO and key and salt):
+        return
     try:
-        HISTORY_FILE.write_text(json.dumps(st.session_state.history), encoding="utf-8")
+        token = Fernet(key).encrypt(json.dumps(ss.history).encode("utf-8")).decode("ascii")
+        HISTORY_FILE.write_text(json.dumps({"salt": salt.hex(), "token": token}), encoding="utf-8")
+    except Exception:
+        return
+    try:
+        if LEGACY_HISTORY_FILE.exists():
+            LEGACY_HISTORY_FILE.unlink()
     except Exception:
         pass
 
@@ -429,7 +496,7 @@ def init_state():
     if "creds" not in ss:
         ss.creds = _load_credentials()
     if "history" not in ss:
-        ss.history = _load_history()
+        ss.history = []  # loaded (decrypted) only after a successful unlock
     defaults = {
         "unlocked": False,
         "fail_count": 0,
@@ -444,8 +511,9 @@ def init_state():
             ss[key] = value
 
 
-def unlock_ev():
+def unlock_ev(passcode: str):
     ss = st.session_state
+    open_history(passcode)
     ss.unlocked = True
     ss.fail_count = 0
     ss.greeting = random.choice(GREETINGS)
@@ -459,6 +527,9 @@ def lock_ev():
     for key in ("pending_query", "greet_autoplay", "answer_autoplay"):
         ss.pop(key, None)
     ss.unlocked = False
+    ss.history = []
+    ss.pop("hist_key", None)
+    ss.pop("hist_salt", None)
     ss.last = None
     ss.chat = []
     ss.last_search = ""
@@ -551,25 +622,21 @@ def get_api_key() -> str:
     if key:
         return key
     try:
-        key = str(st.secrets.get("ANTHROPIC_API_KEY", "") or "").strip()
+        key = str(st.secrets.get("GEMINI_API_KEY", "") or "").strip()
     except Exception:
         key = ""
-    return key or os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    return key or os.environ.get("GEMINI_API_KEY", "").strip()
 
 
-def generate_answer(question: str, subject: str, level: str, placeholder):
-    """Return (ok, text). Streams the answer into `placeholder` as it is written."""
+def generate_answer(question: str, subject: str, level: str):
+    """Ask Google Gemini (free tier). Returns (ok, text)."""
     key = get_api_key()
     if not key:
         return False, (
-            "I need an Anthropic API key before I can think for you 💙. "
-            "Add it in the sidebar under Engine settings, or set ANTHROPIC_API_KEY "
-            "in Streamlit secrets or your environment. The resource links below still work."
+            "I need a free Gemini API key before I can think for you 💙. "
+            "Put it in Streamlit secrets as GEMINI_API_KEY, or paste it in the sidebar "
+            "under Engine settings. The resource links below still work."
         )
-    try:
-        import anthropic
-    except ImportError:
-        return False, "The `anthropic` package isn't installed. Run: pip install -r requirements.txt"
 
     model = str(st.session_state.get("model_name") or DEFAULT_MODEL).strip() or DEFAULT_MODEL
 
@@ -582,35 +649,47 @@ def generate_answer(question: str, subject: str, level: str, placeholder):
     lines.append(question)
     prompt = "\n".join(lines).strip()
 
-    messages = []
+    contents = []
     for old_prompt, old_answer in st.session_state.chat[-3:]:
-        messages.append({"role": "user", "content": old_prompt})
-        messages.append({"role": "assistant", "content": old_answer})
-    messages.append({"role": "user", "content": prompt})
+        contents.append({"role": "user", "parts": [{"text": old_prompt}]})
+        contents.append({"role": "model", "parts": [{"text": old_answer}]})
+    contents.append({"role": "user", "parts": [{"text": prompt}]})
 
-    answer = ""
+    body = {
+        "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+        "contents": contents,
+        "generationConfig": {"maxOutputTokens": 8192, "temperature": 0.4},
+    }
+    url = "https://generativelanguage.googleapis.com/v1beta/models/" + quote(model, safe="-._") + ":generateContent"
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json", "x-goog-api-key": key},
+        method="POST",
+    )
+
     try:
-        client = anthropic.Anthropic(api_key=key, timeout=180.0)
-        with client.messages.stream(
-            model=model, max_tokens=8000, system=SYSTEM_PROMPT, messages=messages
-        ) as stream:
-            for piece in stream.text_stream:
-                answer += piece
-                placeholder.markdown(answer + " ▌")
-    except Exception as exc:  # network, auth, rate limit, bad model...
-        name = type(exc).__name__
-        if answer.strip():
-            return True, answer + f"\n\n*(My connection was interrupted — {name}. Ask me again if this feels incomplete.)*"
-        if name == "AuthenticationError":
-            return False, "That API key was rejected. Please check it in Engine settings."
-        if name == "RateLimitError":
-            return False, "I'm being rate-limited right now. Please wait a moment and try again."
-        if name in ("NotFoundError", "BadRequestError"):
-            return False, f"The engine refused this request ({name}). Check the model name in Engine settings. Details: {exc}"
-        return False, f"Something went wrong ({name}): {exc}"
+        with urllib.request.urlopen(request, timeout=120) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 429:
+            return False, "Today's free limit is used up (or I'm too busy this minute). Please wait a little and try again."
+        if exc.code in (400, 401, 403):
+            return False, "Google rejected the request. Please check your Gemini API key in secrets or Engine settings."
+        if exc.code == 404:
+            return False, "That model name isn't available any more. Change the Model in Engine settings (try gemini-flash-latest)."
+        return False, f"Google returned an error (HTTP {exc.code}). Please try again in a moment."
+    except Exception as exc:  # no internet, timeout, bad response...
+        return False, f"I couldn't reach my brain just now ({type(exc).__name__}). Please try again."
 
-    if not answer.strip():
-        return False, "I came back with nothing, sorry. Please try asking again."
+    try:
+        parts = data["candidates"][0]["content"]["parts"]
+        answer = "".join(str(part.get("text", "")) for part in parts).strip()
+    except Exception:
+        answer = ""
+    if not answer:
+        return False, "I got no answer back this time (it may have been blocked). Please rephrase and try again."
+
     st.session_state.chat.append((prompt, answer))
     st.session_state.chat = st.session_state.chat[-6:]
     return True, answer
@@ -639,7 +718,7 @@ def render_lock_screen():
             if remaining > 0:
                 st.warning(f"Too many attempts. Please wait {int(remaining) + 1} seconds.")
             elif verify_password(passcode):
-                unlock_ev()
+                unlock_ev(passcode)
                 st.rerun()
             else:
                 st.session_state.fail_count += 1
@@ -684,16 +763,22 @@ def render_sidebar():
 
         with st.expander("⚙️ Engine settings"):
             st.text_input(
-                "Anthropic API key",
+                "Gemini API key",
                 type="password",
                 key="api_key_input",
-                placeholder="sk-ant-… (optional if set in secrets/env)",
+                placeholder="Optional if set in secrets/env",
             )
             st.text_input("Model", value=DEFAULT_MODEL, key="model_name")
 
         st.checkbox("🔊 Auto-speak answers", key="auto_speak", value=False)
 
         st.markdown("### 🕘 Task & Search History")
+        if not HAS_CRYPTO:
+            st.warning("History is not being saved: run `pip install cryptography`.")
+        elif st.session_state.get("history_warning"):
+            st.warning("I couldn't open the old encrypted history, so I started fresh (a .bak copy was kept).")
+        else:
+            st.caption("🔐 Encrypted on disk with your passcode.")
         history = st.session_state.history
         if history:
             with st.container(height=300):
@@ -737,7 +822,7 @@ def render_solver_tab():
         key="query_box",
         height=140,
         label_visibility="collapsed",
-        placeholder="Tell me about your day, or ask any Physics, Math, Biology, Chemistry or Coding question…",
+        placeholder="Tell me about your day, or ask any Class 11–12 / NEET Physics, Chemistry, Maths or Biology question…",
     )
 
     btn_a, btn_b = st.columns([3, 1])
@@ -752,9 +837,8 @@ def render_solver_tab():
     pending = st.session_state.pop("pending_query", None)
     if pending:
         add_history("Solve", pending)
-        placeholder = st.empty()
         with st.spinner("EV is thinking with all her heart… 💙"):
-            ok, text = generate_answer(pending, subject, level, placeholder)
+            ok, text = generate_answer(pending, subject, level)
         if ok:
             st.session_state.last = {
                 "query": pending,
@@ -765,7 +849,6 @@ def render_solver_tab():
                 st.session_state.answer_autoplay = True
             st.rerun()
         else:
-            placeholder.empty()
             st.session_state.last = {"query": pending, "answer": "", "ts": ""}
             st.error(text)
 
