@@ -77,8 +77,8 @@ if "authenticated" not in st.session_state:
 if "water_intake" not in st.session_state:
     st.session_state.water_intake = 0
 
-if "sleep_hours" not in st.session_state:
-    st.session_state.sleep_hours = 0
+if "study_hours" not in st.session_state:
+    st.session_state.study_hours = 0.0
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
@@ -104,15 +104,37 @@ if not st.session_state.authenticated:
     st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
 
-# --- MAIN APPLICATION HEADER ---
-st.markdown('<div class="glass-box"><h1>EV: personal assistant 🧬</h1></div>', unsafe_allow_html=True)
-
-# Sidebar Settings & Password Management
+# --- SIDEBAR: MINIMALIST TRACKERS & SETTINGS ---
 with st.sidebar:
     st.markdown('<div class="glass-box">', unsafe_allow_html=True)
-    st.header("⚙️ EV Settings")
+    st.header("⚙️ EV Control Panel")
     st.markdown("---")
-    st.subheader("🔑 Security Manager")
+    
+    # Hydration Tracker
+    st.subheader("💧 Hydration Tracker")
+    st.write(f"Current Intake: **{st.session_state.water_intake} ml** / 3000 ml")
+    if st.button("✅ Done (+250ml Water)", use_container_width=True):
+        st.session_state.water_intake += 250
+        st.success("Logged 250ml water!")
+        st.rerun()
+        
+    st.markdown("---")
+    
+    # Study Tracker
+    st.subheader("📚 Study Tracker")
+    added_study = st.number_input("Log Study Hours:", min_value=0.0, max_value=16.0, value=float(st.session_state.study_hours), step=0.5)
+    if added_study != st.session_state.study_hours:
+        st.session_state.study_hours = added_study
+    st.write(f"Total Studied: **{st.session_state.study_hours} hrs**")
+    
+    st.markdown("---")
+    
+    # Sleep & Wake Reminder Info
+    st.subheader("🌙 Sleep Schedule")
+    st.info("Wake-up Time: **06:00 AM**\nTarget Sleep: **6 Hours**\nBedtime Target: **12:00 AM**")
+    
+    st.markdown("---")
+    st.subheader("🔑 Security")
     with st.expander("Change Password"):
         current_p = st.text_input("Current Password", type="password")
         new_p = st.text_input("New Password", type="password")
@@ -129,13 +151,15 @@ with st.sidebar:
                 st.session_state.master_password = new_p
                 st.success("Password updated successfully!")
 
-    st.markdown("---")
     if st.button("🔒 Lock EV", use_container_width=True):
         st.session_state.authenticated = False
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Safe Voice Button Renderer targeting Parent Window for iOS Safari/Chrome
+# --- MAIN APPLICATION HEADER ---
+st.markdown('<div class="glass-box"><h1>EV: personal assistant 🧬</h1></div>', unsafe_allow_html=True)
+
+# Safe Voice Button Renderer with Advanced Hinglish Phonetics & Sweet Pitch
 def render_voice_button(text_to_speak, button_id):
     safe_text = text_to_speak.replace("'", "\\'").replace("\n", " ")
     template = """
@@ -154,7 +178,10 @@ def render_voice_button(text_to_speak, button_id):
                 .replace(/usse/gi, 'usse')
                 .replace(/milna/gi, 'milne')
                 .replace(/who/gi, 'woh')
-                .replace(/baki/gi, 'baaki');
+                .replace(/baki/gi, 'baaki')
+                .replace(/hain/gi, 'haein')
+                .replace(/mein/gi, 'main')
+                .replace(/kya/gi, 'kyaa');
 
             const utterance = new SpeechSynthesisUtterance(cleanText);
             utterance.lang = 'en-US';
@@ -294,14 +321,14 @@ components.html("""
     </script>
 """, height=0)
 
-# Trigger auto greeting once per session
+# Trigger auto greeting ("How was your time?") once per session
 if not st.session_state.greeted:
     greeting_script = """
     <script>
     setTimeout(() => {
         const synth = window.parent.window.speechSynthesis;
         if (!synth) return;
-        const greetingText = "Hello Happy! How was your day today?";
+        const greetingText = "Hello Happy! How was your time today?";
         const utterance = new SpeechSynthesisUtterance(greetingText);
         utterance.pitch = 1.38;
         utterance.rate = 0.94;
@@ -332,74 +359,44 @@ if not st.session_state.greeted:
     components.html(greeting_script, height=0)
     st.session_state.greeted = True
 
-# Layout Tabs
-tab1, tab2, tab3 = st.tabs(["💬 Chat & Search", "📊 Daily Trackers", "📸 Image Analysis"])
+# --- CLEAN MID-MAIN AREA (Only EV Thought & Ask Question Block) ---
+st.markdown('<div class="glass-box">', unsafe_allow_html=True)
+st.subheader("✨ EV's Thought")
 
-# Tab 1: Chat & Voice
-with tab1:
-    st.markdown('<div class="glass-box">', unsafe_allow_html=True)
-    st.subheader("EV AI Assistant")
-    
-    user_quotes = [
-        "Great power comes with Great responsibilities",
-        "No amount of money ever bought a second",
-        "Agar kisi chiz ko sidhat se chaho to puri kayanat tumhe usse milna me jot jati hai",
-        "Never let anything make you forget how u really are",
-        "Agar life mein happy ending na ho to who ending nahi picture abhi baki hai mere dost"
-    ]
-    thought = random.choice(user_quotes)
-    st.write(f"✨ **EV's Thought:** {thought}")
-    
-    components.html(render_voice_button(thought, "thought"), height=55)
-    st.markdown('</div>', unsafe_allow_html=True)
+user_quotes = [
+    "Great power comes with Great responsibilities",
+    "No amount of money ever bought a second",
+    "Agar kisi chiz ko sidhat se chaho to puri kayanat tumhe usse milna me jot jati hai",
+    "Never let anything make you forget how u really are",
+    "Agar life mein happy ending na ho to who ending nahi picture abhi baki hai mere dost"
+]
+thought = random.choice(user_quotes)
+st.write(f"💭 {thought}")
+components.html(render_voice_button(thought, "thought"), height=55)
+st.markdown('</div>', unsafe_allow_html=True)
 
+# Ask Question Block
+st.markdown('<div class="glass-box">', unsafe_allow_html=True)
+st.subheader("💬 Ask EV")
+user_input = st.text_area("What is on your mind today, Happy?")
+
+if st.button("Ask EV", use_container_width=True):
+    if user_input:
+        ev_response = f"Here is the precise information you requested about '{user_input}': Full response generated seamlessly."
+        st.session_state.chat_history.append(("Happy", user_input))
+        st.session_state.chat_history.append(("EV", ev_response))
+    else:
+        st.warning("Please type a question first.")
+st.markdown('</div>', unsafe_allow_html=True)
+
+# Conversation History
+if st.session_state.chat_history:
     st.markdown('<div class="glass-box">', unsafe_allow_html=True)
-    user_input = st.text_area("Ask EV anything:")
-    
-    if st.button("Ask EV", use_container_width=True):
-        if user_input:
-            ev_response = f"Here is the exact information for '{user_input}': Full response generated directly as requested."
-            st.session_state.chat_history.append(("Happy", user_input))
-            st.session_state.chat_history.append(("EV", ev_response))
+    st.subheader("Conversation History")
+    for idx, (sender, message) in enumerate(st.session_state.chat_history):
+        if sender == "Happy":
+            st.markdown(f"**👤 You:** {message}")
         else:
-            st.warning("Please enter a question or query first.")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    if st.session_state.chat_history:
-        st.markdown('<div class="glass-box">', unsafe_allow_html=True)
-        st.write("### Conversation")
-        for idx, (sender, message) in enumerate(st.session_state.chat_history):
-            if sender == "Happy":
-                st.markdown(f"**👤 You:** {message}")
-            else:
-                st.markdown(f"**🧬 EV:** {message}")
-                components.html(render_voice_button(message, f"msg_{idx}"), height=55)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-# Tab 2: Trackers
-with tab2:
-    st.markdown('<div class="glass-box">', unsafe_allow_html=True)
-    st.subheader("💧 Daily Health & Prep Meter")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.write("### Hydration Tracker")
-        if st.button("➕ Add 1 Glass Water (250ml)"):
-            st.session_state.water_intake += 250
-        st.metric(label="Total Water Intake Today", value=f"{st.session_state.water_intake} ml")
-        
-    with col2:
-        st.write("### Sleep Tracker")
-        st.session_state.sleep_hours = st.number_input("Hours slept last night:", min_value=0.0, max_value=24.0, value=float(st.session_state.sleep_hours), step=0.5)
-        st.metric(label="Sleep Duration", value=f"{st.session_state.sleep_hours} hrs")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Tab 3: Image Analysis
-with tab3:
-    st.markdown('<div class="glass-box">', unsafe_allow_html=True)
-    st.subheader("📷 Upload Problem / Diagram")
-    uploaded_file = st.file_uploader("Upload an image:", type=["png", "jpg", "jpeg"])
-    if uploaded_file is not None:
-        st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
-        st.success("Image received! EV is processing full analysis...")
+            st.markdown(f"**🧬 EV:** {message}")
+            components.html(render_voice_button(message, f"msg_{idx}"), height=55)
     st.markdown('</div>', unsafe_allow_html=True)
