@@ -1,4 +1,2 @@
-streamlit
-gtts
-sympy
-pip install google-generativeai
+streamlit>=1.30.0
+
