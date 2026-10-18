@@ -387,15 +387,17 @@ st.write(f"💭 {thought}")
 components.html(render_voice_button(thought, "thought"), height=55)
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Smart Knowledge Responder for Physics, Chemistry & General Queries
+# Intelligent First-Person Knowledge Responder for Physics, Chemistry & General Queries
 def generate_smart_answer(query):
     q_lower = query.lower()
-    if "physics" in q_lower or "gravity" in q_lower or "force" in q_lower or "newton" in q_lower:
-        return f"Regarding physics and '{query}': Physics is the natural science that studies matter, its fundamental constituents, its motion and behavior through space and time, and the related entities of energy and force."
-    elif "chemistry" in q_lower or "atom" in q_lower or "molecule" in q_lower or "reaction" in q_lower:
-        return f"Regarding chemistry and '{query}': Chemistry is the scientific discipline involved with elements and compounds composed of atoms, molecules and ions: their composition, structure, properties, behavior and the changes they undergo during a reaction with other substances."
+    if "physics" in q_lower or "gravity" in q_lower or "force" in q_lower or "newton" in q_lower or "motion" in q_lower:
+        return f"I can definitely explain that for you! Regarding '{query}': Physics is the fundamental science that studies matter, energy, space, and motion. For example, Newton's laws describe how forces interact with objects, explaining everything from falling apples to planetary orbits."
+    elif "chemistry" in q_lower or "atom" in q_lower or "molecule" in q_lower or "reaction" in q_lower or "bond" in q_lower:
+        return f"I would love to help with chemistry! Regarding '{query}': Chemistry focuses on atoms, molecules, and elements. It explores how substances combine through chemical bonds, react with one another, and transform into new materials."
+    elif "math" in q_lower or "algebra" in q_lower or "calculus" in q_lower or "equation" in q_lower:
+        return f"Mathematics is one of my favorite topics! Regarding '{query}': Math provides the logical framework and equations we use to measure quantities, analyze patterns, and solve complex problems across science and engineering."
     else:
-        return f"Here is the detailed explanation for '{query}': EV has processed your query with complete freedom and precision to provide the exact breakdown you need."
+        return f"I have looked into your question about '{query}'. Based on my knowledge, this topic involves essential concepts and principles. I am here to help you study it, so let me know if you would like me to break down any specific part of it!"
 
 # Ask Question Block
 st.markdown('<div class="glass-box">', unsafe_allow_html=True)
