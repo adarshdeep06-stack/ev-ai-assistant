@@ -124,7 +124,7 @@ with st.sidebar:
         st.session_state.authenticated = False
         st.rerun()
 
-# Helper function for Speech + Full-Width Bottom Waveform + Top Screen Subtitles
+# Helper function for Strict Samantha Female Voice + Bottom Waveform + Top Subtitles
 def render_voice_button(text_to_speak, button_id):
     safe_text = text_to_speak.replace("'", "\\'").replace("\n", " ")
     return f"""
@@ -144,18 +144,25 @@ def render_voice_button(text_to_speak, button_id):
                 .replace(/baki/gi, 'baaki');
 
             const utterance = new SpeechSynthesisUtterance(cleanText);
-            utterance.lang = 'hi-IN';
-            utterance.rate = 0.95;
-            utterance.pitch = 1.1;
+            utterance.lang = 'en-IN';
+            utterance.rate = 0.92;   // Calm, polite speed
+            utterance.pitch = 1.25;  // Sweet female tone
 
+            // Strictly target Samantha and iOS female voices
             const voices = window.speechSynthesis.getVoices();
-            const femaleVoice = voices.find(v => 
-                (v.lang.includes('IN') || v.lang.includes('hi')) && 
-                (v.name.includes('Female') || v.name.includes('Google') || v.name.includes('Siri') || v.name.includes('Veena'))
-            ) || voices.find(v => v.lang.includes('en-IN'));
+            const sweetFemaleVoice = voices.find(v => 
+                v.name.includes('Samantha') || 
+                v.name.includes('Karen') || 
+                v.name.includes('Tessa') || 
+                v.name.includes('Veena') || 
+                v.name.includes('Siri (Female') || 
+                v.name.includes('Google US English Female') ||
+                v.name.includes('Zira') ||
+                (v.name.toLowerCase().includes('female') && v.lang.includes('en'))
+            ) || voices.find(v => v.lang.includes('en-IN') || v.lang.includes('en-US'));
 
-            if (femaleVoice) {{
-                utterance.voice = femaleVoice;
+            if (sweetFemaleVoice) {{
+                utterance.voice = sweetFemaleVoice;
             }}
 
             const waveContainer = window.parent.document.getElementById('bottom-wave-container');
@@ -170,13 +177,15 @@ def render_voice_button(text_to_speak, button_id):
             }};
             utterance.onend = function() {{
                 if (waveContainer) waveContainer.style.display = 'none';
+                if (subtitleBox) subtitleBox.style.display = 'none';
             }};
             utterance.onerror = function() {{
                 if (waveContainer) waveContainer.style.display = 'none';
+                if (subtitleBox) subtitleBox.style.display = 'none';
             }};
 
             window.speechSynthesis.speak(utterance);
-        }}
+        }
         </script>
         
         <button onclick="speak_{button_id}()" style="background: linear-gradient(135deg, #0284C7, #0369A1); color:white; padding:8px 18px; border:1px solid rgba(56,189,248,0.4); border-radius:8px; font-weight:600; cursor:pointer;">
@@ -276,6 +285,7 @@ with tab1:
     st.markdown('<div class="glass-box">', unsafe_allow_html=True)
     st.subheader("EV AI Assistant")
     
+    # User's Exact Quotes
     user_quotes = [
         "Great power comes with Great responsibilities",
         "No amount of money ever bought a second",
@@ -294,7 +304,6 @@ with tab1:
     
     if st.button("Ask EV", use_container_width=True):
         if user_input:
-            # Direct Unrestricted Output Logic
             ev_response = f"Here is the exact information for '{user_input}': Full response generated directly as requested."
             st.session_state.chat_history.append(("Happy", user_input))
             st.session_state.chat_history.append(("EV", ev_response))
