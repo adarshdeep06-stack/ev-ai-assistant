@@ -2,44 +2,103 @@ import streamlit as st
 import streamlit.components.v1 as components
 import math
 import re
+from datetime import date
 
-# --- 1. PAGE CONFIGURATION & LIQUID GLASS STYLING ---
-st.set_page_config(page_title="EV Offline Assistant", page_icon="🤖", layout="wide")
+# --- 1. PAGE CONFIG & LIQUID NAVY STYLING ---
+st.set_page_config(page_title="EV: personal helper 🧬", page_icon="🧬", layout="wide")
 
 st.markdown("""
 <style>
-    /* Dark Liquid Glass Styling */
+    /* Liquid Navy & Lure Black Background */
     .stApp {
-        background: linear-gradient(135deg, #0f0c20, #15102a, #060212);
-        color: #e0e0e0;
-        font-family: 'Inter', sans-serif;
+        background: linear-gradient(135deg, #030712 0%, #0B1528 50%, #02040A 100%);
+        color: #E2E8F0;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
-    .glass-card {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 16px;
-        padding: 20px;
-        margin-bottom: 15px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    
+    /* Glowing Glass Containers */
+    .glass-panel {
+        background: rgba(15, 23, 42, 0.75);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(56, 189, 248, 0.2);
+        border-radius: 20px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 30px -10px rgba(2, 132, 199, 0.25);
     }
+    
+    /* EV Header */
     .ev-header {
-        font-size: 2.2rem;
-        font-weight: 700;
-        background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
+        font-size: 2.4rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        background: linear-gradient(90deg, #38BDF8 0%, #818CF8 50%, #C084FC 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        margin-bottom: 15px;
+    }
+
+    /* Fixed Text Input Contrast */
+    .stTextInput input {
+        background-color: #0f172a !important;
+        color: #ffffff !important;
+        font-size: 1.1rem !important;
+        font-weight: 500 !important;
+        border: 2px solid rgba(56, 189, 248, 0.4) !important;
+        border-radius: 12px !important;
+    }
+
+    /* Custom Button Styling */
+    .stButton>button {
+        background: linear-gradient(90deg, #0284c7 0%, #2563eb 100%);
+        color: #ffffff !important;
+        font-weight: 600;
+        border: none;
+        border-radius: 10px;
+        padding: 8px 16px;
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover {
+        box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+    }
+
+    /* Tab navigation style */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background: rgba(15, 23, 42, 0.5);
+        border-radius: 10px;
+        color: #94A3B8;
+        padding: 8px 16px;
+    }
+    .stTabs [aria-selected="true"] {
+        background: rgba(56, 189, 248, 0.2) !important;
+        color: #38BDF8 !important;
+        border: 1px solid rgba(56, 189, 248, 0.4) !important;
     }
 </style>
-""", unsafe_allow_html=1)
+""", unsafe_allow_html=True)
 
-# --- 2. OFFLINE SCIENTIFIC CALCULATOR ENGINE ---
+# --- 2. VOICE SYNTHESIS HELPER (OFFLINE EV VOICE) ---
+def speak_response(text):
+    """Uses client-side browser speech synthesis with EV's signature voice settings."""
+    clean_text = text.replace("'", "\\'")
+    html_code = f"""
+    <script>
+        window.speechSynthesis.cancel();
+        var msg = new SpeechSynthesisUtterance('{clean_text}');
+        msg.rate = 0.95;
+        msg.pitch = 1.1;
+        window.speechSynthesis.speak(msg);
+    </script>
+    """
+    components.html(html_code, height=0, width=0)
+
+# --- 3. OFFLINE SCIENTIFIC CALCULATOR ENGINE ---
 def ev_scientific_calc(query: str):
-    """Parses text/speech input for scientific operations completely offline."""
     q = query.lower().strip()
-    
-    # Mathematical Constants & Aliases
     safe_dict = {
         'sin': math.sin, 'cos': math.cos, 'tan': math.tan,
         'asin': math.asin, 'acos': math.acos, 'atan': math.atan,
@@ -49,7 +108,6 @@ def ev_scientific_calc(query: str):
         'degrees': math.degrees, 'pow': math.pow, 'abs': abs
     }
     
-    # Natural language query replacements
     clean_q = re.sub(r'square root of ([0-9.]+)', r'sqrt(\1)', q)
     clean_q = re.sub(r'log of ([0-9.]+)', r'log(\1)', clean_q)
     clean_q = re.sub(r'sin of ([0-9.]+)', r'sin(radians(\1))', clean_q)
@@ -59,146 +117,83 @@ def ev_scientific_calc(query: str):
     clean_q = re.sub(r'[^0-9\.\+\-\*\/\(\)\,\s\a-z\_]', '', clean_q)
     
     try:
-        # Safe mathematical evaluation
         res = eval(clean_q, {"__builtins__": None}, safe_dict)
         if isinstance(res, float):
             res = round(res, 6)
-        return f"Calculated Result: {res}", str(res)
+        return f"Result: {res}", str(res)
     except Exception:
-        return "I am operating in offline mode. Enter a scientific calculation (e.g., 'sqrt(144)', 'sin(45)', '2^8').", None
+        return "Enter a valid scientific expression (e.g. 'sqrt(144)', 'sin(30)', 'log(100)').", None
 
-# --- 3. VOICE SYNTHESIS HELPER ---
-def speak_response(text):
-    """Uses client-side browser speech synthesis (Works completely offline)."""
-    clean_text = text.replace("'", "\\'")
-    html_code = f"""
-    <script>
-        var msg = new SpeechSynthesisUtterance('{clean_text}');
-        msg.rate = 1.0;
-        msg.pitch = 1.1;
-        window.speechSynthesis.speak(msg);
-    </script>
-    """
-    components.html(html_code, height=0, width=0)
+# --- 4. DAILY WORD PUZZLE DATABASE ---
+DAILY_PUZZLES = [
+    {"word": "APPLE", "scramble": "P E A L P", "clue": "A common sweet red or green fruit.", "hint": "Starts with 'A'"},
+    {"word": "BRAIN", "scramble": "R I A N B", "clue": "The center of thought in your body.", "hint": "Starts with 'B'"},
+    {"word": "CLOUD", "scramble": "O L D C U", "clue": "Fluffy white body in the sky.", "hint": "Starts with 'C'"},
+    {"word": "DREAM", "scramble": "R E A M D", "clue": "Thoughts or images while sleeping.", "hint": "Starts with 'D'"},
+    {"word": "EARTH", "scramble": "R T H E A", "clue": "The planet we all live on.", "hint": "Starts with 'E'"},
+    {"word": "FLAME", "scramble": "L A M E F", "clue": "The visible part of a fire.", "hint": "Starts with 'F'"},
+    {"word": "GRASS", "scramble": "S R A S G", "clue": "Green vegetation covering lawns.", "hint": "Starts with 'G'"},
+    {"word": "HEART", "scramble": "E A R T H", "clue": "Organ that pumps blood.", "hint": "Starts with 'H'"},
+    {"word": "LIGHT", "scramble": "G H T L I", "clue": "Natural agent that stimulates sight.", "hint": "Starts with 'L'"},
+    {"word": "PLANT", "scramble": "L A N T P", "clue": "A living organism that absorbs water.", "hint": "Starts with 'P'"},
+    {"word": "SMOKE", "scramble": "M O K E S", "clue": "Gas produced by burning material.", "hint": "Starts with 'S'"},
+    {"word": "WATER", "scramble": "T E R W A", "clue": "Clear liquid essential for life.", "hint": "Starts with 'W'"}
+]
 
-# --- 4. APP LAYOUT ---
-st.markdown("<h1 class='ev-header'>🤖 EV: Offline Assistant & Arcade</h1>", unsafe_allow_html=1)
+# --- MAIN APP LAYOUT ---
+st.markdown("<h1 class='ev-header'>EV: personal helper 🧬</h1>", unsafe_allow_html=True)
 
-tab_calc, tab_game = st.tabs(["🧮 Scientific Calculator", "🎮 Jewel Match Game"])
+tab_calc, tab_game = st.tabs(["🧮 Scientific Calculator", "🧩 Daily Word Arcade"])
 
-# --- TAB 1: SCIENTIFIC CALCULATOR ---
+# --- TAB 1: CALCULATOR ---
 with tab_calc:
-    st.markdown("<div class='glass-card'><h3>EV Voice & Scientific Math Engine</h3><p>Supported operations: sin, cos, tan, sqrt, log, ln, power (^), factorials, constants (pi, e).</p></div>", unsafe_allow_html=1)
+    st.markdown("<div class='glass-panel'><h3>Scientific Math Assistant</h3><p style='color:#94A3B8;'>Calculates trigonometry, logarithms, factorials, roots, and standard math offline.</p></div>", unsafe_allow_html=True)
     
-    # Quick Input Reference Buttons
-    col_a, col_b, col_c, col_d = st.columns(4)
-    if col_a.button("sqrt(144)"): st.session_state['user_input'] = "sqrt(144)"
-    if col_b.button("sin(45 degrees)"): st.session_state['user_input'] = "sin of 45"
-    if col_c.button("log(100)"): st.session_state['user_input'] = "log(100)"
-    if col_d.button("factorial(5)"): st.session_state['user_input'] = "factorial(5)"
+    col1, col2, col3, col4 = st.columns(4)
+    if col1.button("sqrt(256)"): st.session_state['math_in'] = "sqrt(256)"
+    if col2.button("sin(90)"): st.session_state['math_in'] = "sin of 90"
+    if col3.button("log(1000)"): st.session_state['math_in'] = "log(1000)"
+    if col4.button("5^3"): st.session_state['math_in'] = "5^3"
     
-    user_query = st.text_input("Speak or Type expression for EV:", key="user_input", placeholder="e.g. 15 * log(50) or sqrt(256)")
+    expr = st.text_input("Enter Math Expression:", key="math_in", placeholder="e.g. sqrt(144) + log(10)")
     
-    if user_query:
-        response_text, result_val = ev_scientific_calc(user_query)
-        st.markdown(f"<div class='glass-card'><h4>EV Response:</h4><p style='font-size: 1.3rem; color: #00d2ff;'>{response_text}</p></div>", unsafe_allow_html=1)
-        if result_val:
-            speak_response(f"The result is {result_val}")
+    # Calculate and Dictate Button
+    dictate_btn = st.button("🔊 Calculate & Dictate Answer")
+    
+    if expr or dictate_btn:
+        display_text, speech_val = ev_scientific_calc(expr)
+        st.markdown(f"<div class='glass-panel'><h4 style='color:#38BDF8;'>{display_text}</h4></div>", unsafe_allow_html=True)
+        
+        if dictate_btn and speech_val:
+            speak_response(f"The dictated answer is {speech_val}")
 
-# --- TAB 2: EMBEDDED HTML5 MATCH-3 GAME ---
+# --- TAB 2: DAILY WORD PUZZLE ARCADE ---
 with tab_game:
-    st.markdown("<div class='glass-card'><h3>EV Arcade: Match-3 Gem Crusher</h3><p>Click two adjacent tiles to swap them and match 3 or more in a row!</p></div>", unsafe_allow_html=1)
+    today_index = date.today().timetuple().tm_yday % len(DAILY_PUZZLES)
+    puzzle = DAILY_PUZZLES[today_index]
     
-    # Complete, Standalone HTML5/JS Match-3 Game Canvas
-    game_code = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <style>
-        body { margin: 0; background: transparent; text-align: center; color: white; font-family: sans-serif; }
-        #canvas { background: rgba(0,0,0,0.5); border-radius: 12px; border: 2px solid #3a7bd5; cursor: pointer; }
-        .score-board { font-size: 20px; margin-bottom: 10px; font-weight: bold; color: #00d2ff; }
-    </style>
-    </head>
-    <body>
-    <div class="score-board">Score: <span id="score">0</span></div>
-    <canvas id="canvas" width="320" height="320"></canvas>
-    <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const grid = 8, size = 40;
-        const colors = ['#ff4d4d', '#33dd33', '#3399ff', '#ffcc00', '#cc66ff'];
-        let board = [], score = 0, selected = null;
+    st.markdown(f"""
+    <div class='glass-panel'>
+        <h3>🧩 Today's Daily Offline Word Puzzle</h3>
+        <p style='color:#94A3B8;'>Date: {date.today().strftime('%A, %B %d, %Y')}</p>
+        <p style='font-size: 1.1rem;'>Unscramble these letters to form a 5-letter daily word:</p>
+        <h1 style='letter-spacing: 8px; color: #38BDF8; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; text-align: center;'>{puzzle['scramble']}</h1>
+        <p><b>Clue:</b> <i>"{puzzle['clue']}"</i></p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    user_guess = st.text_input("Your Answer:", key="puzzle_guess", placeholder="Type your 5-letter word here").strip().upper()
+    
+    if user_guess:
+        if user_guess == puzzle['word']:
+            st.success("🎉 Correct! You solved today's word puzzle!")
+            speak_response("Awesome job! You solved today's puzzle.")
+        else:
+            st.error("Incorrect. Try again or check the Answer Key section below!")
 
-        function init() {
-            for(let r=0; r<grid; r++) {
-                board[r] = [];
-                for(let c=0; c<grid; c++) board[r][c] = Math.floor(Math.random()*colors.length);
-            }
-            draw();
-        }
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            for(let r=0; r<grid; r++) {
-                for(let c=0; c<grid; c++) {
-                    ctx.fillStyle = colors[board[r][c]];
-                    ctx.beginPath();
-                    ctx.arc(c*size + size/2, r*size + size/2, size/2 - 4, 0, Math.PI*2);
-                    ctx.fill();
-                    if(selected && selected.r === r && selected.c === c) {
-                        ctx.strokeStyle = '#ffffff';
-                        ctx.lineWidth = 3;
-                        ctx.stroke();
-                    }
-                }
-            }
-        }
-
-        canvas.addEventListener('click', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const c = Math.floor((e.clientX - rect.left) / size);
-            const r = Math.floor((e.clientY - rect.top) / size);
-            
-            if(!selected) {
-                selected = {r, c};
-            } else {
-                let dr = Math.abs(selected.r - r), dc = Math.abs(selected.c - c);
-                if((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
-                    let temp = board[selected.r][selected.c];
-                    board[selected.r][selected.c] = board[r][c];
-                    board[r][c] = temp;
-                    checkMatches();
-                }
-                selected = null;
-            }
-            draw();
-        });
-
-        function checkMatches() {
-            let matched = false;
-            for(let r=0; r<grid; r++) {
-                for(let c=0; c<grid-2; c++) {
-                    let val = board[r][c];
-                    if(val !== -1 && val === board[r][c+1] && val === board[r][c+2]) {
-                        board[r][c] = board[r][c+1] = board[r][c+2] = -1;
-                        score += 30; matched = true;
-                    }
-                }
-            }
-            if(matched) {
-                document.getElementById('score').innerText = score;
-                setTimeout(() => {
-                    for(let r=0; r<grid; r++)
-                        for(let c=0; c<grid; c++)
-                            if(board[r][c] === -1) board[r][c] = Math.floor(Math.random()*colors.length);
-                    draw();
-                }, 300);
-            }
-        }
-        init();
-    </script>
-    </body>
-    </html>
-    """
-    components.html(game_code, height=400)
+    # --- ANSWER KEY SECTION ---
+    st.markdown("---")
+    with st.expander("🔑 Answer Key & Solution Section"):
+        st.write(f"**Letter Hint:** {puzzle['hint']}")
+        if st.button("Reveal Solution"):
+            st.info(f"The answer for today's puzzle is: **{puzzle['word']}**")
