@@ -5,55 +5,60 @@ import streamlit.components.v1 as components
 # Page Configuration
 st.set_page_config(page_title="EV: personal assistant 🧬", page_icon="🧬", layout="wide")
 
-# --- CUSTOM LIQUID GLASS NAVY BLUE STYLING ---
+# --- HIGH-CONTRAST LIQUID GLASS NAVY BLUE STYLING ---
 st.markdown("""
     <style>
-    /* Main Background - Liquid Navy Blue Gradient */
+    /* Main Background */
     .stApp {
-        background: linear-gradient(135deg, #0A1128 0%, #0F172A 50%, #020617 100%);
-        color: #F1F5F9;
+        background: linear-gradient(135deg, #090D16 0%, #111827 50%, #020617 100%);
+        color: #FFFFFF;
         padding-bottom: 120px;
     }
     
     /* Sidebar Styling */
     [data-testid="stSidebar"] {
-        background-color: rgba(15, 23, 42, 0.85);
+        background-color: rgba(15, 23, 42, 0.95);
         backdrop-filter: blur(12px);
-        border-right: 1px solid rgba(56, 189, 248, 0.1);
+        border-right: 1px solid rgba(56, 189, 248, 0.2);
     }
     
-    /* Glassmorphism Cards */
+    /* High-Visibility Liquid Glass Navy Blue Bubbles */
     .glass-box {
-        background: rgba(30, 41, 59, 0.6);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        border: 1px solid rgba(56, 189, 248, 0.2);
-        border-radius: 16px;
-        padding: 20px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 58, 138, 0.65) 100%);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(56, 189, 248, 0.5);
+        border-radius: 18px;
+        padding: 24px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
         margin-bottom: 20px;
+        color: #FFFFFF !important;
+    }
+    
+    .glass-box h1, .glass-box h2, .glass-box h3, .glass-box p, .glass-box label, .glass-box span {
+        color: #FFFFFF !important;
     }
     
     /* Custom Buttons */
     .stButton>button {
         background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
         color: white;
-        border: 1px solid rgba(56, 189, 248, 0.4);
+        border: 1px solid rgba(56, 189, 248, 0.6);
         border-radius: 10px;
-        font-weight: 600;
+        font-weight: 700;
         transition: all 0.3s ease;
     }
     .stButton>button:hover {
         background: linear-gradient(135deg, #0ea5e9 0%, #0284C7 100%);
         border-color: #38bdf8;
-        box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+        box-shadow: 0 0 15px rgba(56, 189, 248, 0.6);
     }
     
     /* Input Fields */
     .stTextInput>div>div>input, .stTextArea>div>div>textarea {
-        background-color: rgba(15, 23, 42, 0.8) !important;
-        color: #F1F5F9 !important;
-        border: 1px solid rgba(56, 189, 248, 0.3) !important;
+        background-color: rgba(15, 23, 42, 0.95) !important;
+        color: #FFFFFF !important;
+        border: 1px solid rgba(56, 189, 248, 0.5) !important;
         border-radius: 10px !important;
     }
     </style>
@@ -75,19 +80,21 @@ if "sleep_hours" not in st.session_state:
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
+if "greeted" not in st.session_state:
+    st.session_state.greeted = False
+
 # --- PASSWORD AUTHENTICATION WALL ---
 if not st.session_state.authenticated:
     st.markdown("""
         <div style="max-width: 400px; margin: 100px auto; padding: 30px;" class="glass-box">
             <h2 style="color: #38BDF8; text-align: center;">🔒 EV: personal assistant 🧬</h2>
-            <p style="text-align: center; color: #94A3B8;">Security Lock Active</p>
+            <p style="text-align: center; color: #CBD5E1;">Security Lock Active</p>
     """, unsafe_allow_html=True)
     
     input_pwd = st.text_input("Enter Passcode to Access EV:", type="password")
     if st.button("Unlock EV", use_container_width=True):
         if input_pwd == st.session_state.master_password:
             st.session_state.authenticated = True
-            st.success("Access Granted! Welcome, Happy!")
             st.rerun()
         else:
             st.error("Incorrect Passcode! Try again.")
@@ -95,13 +102,13 @@ if not st.session_state.authenticated:
     st.stop()
 
 # --- MAIN APPLICATION ---
-st.title("EV: personal assistant 🧬")
+st.markdown('<div class="glass-box"><h1>EV: personal assistant 🧬</h1></div>', unsafe_allow_html=True)
 
-# Sidebar Settings & Dynamic Password Change
+# Sidebar Settings & Password Management
 with st.sidebar:
+    st.markdown('<div class="glass-box">', unsafe_allow_html=True)
     st.header("⚙️ EV Settings")
     st.markdown("---")
-    
     st.subheader("🔑 Security Manager")
     with st.expander("Change Password"):
         current_p = st.text_input("Current Password", type="password")
@@ -123,8 +130,9 @@ with st.sidebar:
     if st.button("🔒 Lock EV", use_container_width=True):
         st.session_state.authenticated = False
         st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# Helper function for Strict Samantha Female Voice + Bottom Waveform + Top Subtitles
+# Helper function for Strict Female Voice + Bottom Waveform + Top Subtitles
 def render_voice_button(text_to_speak, button_id):
     safe_text = text_to_speak.replace("'", "\\'").replace("\n", " ")
     return f"""
@@ -144,25 +152,29 @@ def render_voice_button(text_to_speak, button_id):
                 .replace(/baki/gi, 'baaki');
 
             const utterance = new SpeechSynthesisUtterance(cleanText);
-            utterance.lang = 'en-IN';
-            utterance.rate = 0.92;   // Calm, polite speed
-            utterance.pitch = 1.25;  // Sweet female tone
+            utterance.lang = 'en-US';
+            utterance.rate = 0.92;
+            utterance.pitch = 1.25;
 
-            // Strictly target Samantha and iOS female voices
-            const voices = window.speechSynthesis.getVoices();
-            const sweetFemaleVoice = voices.find(v => 
-                v.name.includes('Samantha') || 
-                v.name.includes('Karen') || 
-                v.name.includes('Tessa') || 
-                v.name.includes('Veena') || 
-                v.name.includes('Siri (Female') || 
-                v.name.includes('Google US English Female') ||
-                v.name.includes('Zira') ||
-                (v.name.toLowerCase().includes('female') && v.lang.includes('en'))
-            ) || voices.find(v => v.lang.includes('en-IN') || v.lang.includes('en-US'));
+            function setFemaleVoice() {{
+                const voices = window.speechSynthesis.getVoices();
+                const targetVoice = voices.find(v => v.name === 'Samantha') ||
+                                    voices.find(v => v.name === 'Karen') ||
+                                    voices.find(v => v.name.includes('Siri') && v.name.includes('Female')) ||
+                                    voices.find(v => v.name.includes('Veena')) ||
+                                    voices.find(v => v.name.includes('Victoria')) ||
+                                    voices.find(v => v.name.includes('Zira')) ||
+                                    voices.find(v => v.name.toLowerCase().includes('female')) ||
+                                    voices.find(v => v.lang.includes('en'));
 
-            if (sweetFemaleVoice) {{
-                utterance.voice = sweetFemaleVoice;
+                if (targetVoice) {{
+                    utterance.voice = targetVoice;
+                }}
+            }}
+
+            setFemaleVoice();
+            if (window.speechSynthesis.onvoiceschanged !== undefined) {{
+                window.speechSynthesis.onvoiceschanged = setFemaleVoice;
             }}
 
             const waveContainer = window.parent.document.getElementById('bottom-wave-container');
@@ -194,13 +206,12 @@ def render_voice_button(text_to_speak, button_id):
     </div>
     """
 
-# Inject Fixed Bottom Waveform Bar and Top Screen Subtitles into Main DOM
-st.components.v1.html("""
+# Inject UI Elements (Bottom Waveform, Top Subtitles, Auto Greeting)
+st.components.v1.html(f"""
     <script>
     const doc = window.parent.document;
     
-    // Create Top Screen Subtitle Overlay
-    if (!doc.getElementById('top-subtitle-box')) {
+    if (!doc.getElementById('top-subtitle-box')) {{
         const subBox = doc.createElement('div');
         subBox.id = 'top-subtitle-box';
         subBox.style.cssText = `
@@ -210,24 +221,23 @@ st.components.v1.html("""
             transform: translateX(-50%);
             width: 85%;
             max-width: 800px;
-            background: rgba(15, 23, 42, 0.95);
-            border: 1px solid rgba(56, 189, 248, 0.5);
+            background: rgba(15, 23, 42, 0.98);
+            border: 1px solid rgba(56, 189, 248, 0.6);
             color: #38BDF8;
-            padding: 12px 20px;
+            padding: 14px 22px;
             border-radius: 12px;
             font-size: 16px;
-            font-weight: 600;
+            font-weight: 700;
             text-align: center;
             z-index: 999999;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.7);
             display: none;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(12px);
         `;
         doc.body.appendChild(subBox);
-    }
+    }}
 
-    // Create Bottom Full-Width Audio Waveform Bar
-    if (!doc.getElementById('bottom-wave-container')) {
+    if (!doc.getElementById('bottom-wave-container')) {{
         const waveBox = doc.createElement('div');
         waveBox.id = 'bottom-wave-container';
         waveBox.style.cssText = `
@@ -235,9 +245,9 @@ st.components.v1.html("""
             bottom: 0;
             left: 0;
             width: 100vw;
-            height: 50px;
-            background: rgba(10, 17, 40, 0.92);
-            border-top: 1px solid rgba(56, 189, 248, 0.3);
+            height: 55px;
+            background: rgba(15, 23, 42, 0.96);
+            border-top: 1px solid rgba(56, 189, 248, 0.4);
             display: none;
             justify-content: center;
             align-items: center;
@@ -246,9 +256,8 @@ st.components.v1.html("""
             backdrop-filter: blur(12px);
         `;
         
-        for(let i=0; i<30; i++){
+        for(let i=0; i<30; i++){{
             const bar = doc.createElement('div');
-            bar.className = 'bottom-bar';
             bar.style.cssText = `
                 width: 4px;
                 height: 10px;
@@ -258,34 +267,38 @@ st.components.v1.html("""
                 animation-delay: ${(i * 0.05).toFixed(2)}s;
             `;
             waveBox.appendChild(bar);
-        }
+        }}
 
-        if (!doc.getElementById('wave-style-sheet')) {
+        if (!doc.getElementById('wave-style-sheet')) {{
             const style = doc.createElement('style');
             style.id = 'wave-style-sheet';
             style.innerHTML = `
-                @keyframes fullWaveAnim {
-                    0%, 100% { height: 8px; opacity: 0.4; }
-                    50% { height: 38px; opacity: 1; background-color: #0ea5e9; box-shadow: 0 0 10px #38bdf8; }
-                }
+                @keyframes fullWaveAnim {{
+                    0%, 100% {{ height: 8px; opacity: 0.4; }}
+                    50% {{ height: 38px; opacity: 1; background-color: #0ea5e9; box-shadow: 0 0 12px #38bdf8; }}
+                }}
             `;
             doc.head.appendChild(style);
-        }
+        }}
 
         doc.body.appendChild(waveBox);
-    }
+    }}
+
+    // Auto Greeting on First Load
+    {"window.hasGreeted = true; setTimeout(() => { const greetingText = 'Hello! How was your day today?'; const utterance = new SpeechSynthesisUtterance(greetingText); utterance.pitch = 1.25; utterance.rate = 0.92; window.speechSynthesis.speak(utterance); }, 1000);" if not st.session_state.greeted else ""}
     </script>
 """, height=0)
+
+st.session_state.greeted = True
 
 # Layout Tabs
 tab1, tab2, tab3 = st.tabs(["💬 Chat & Search", "📊 Daily Trackers", "📸 Image Analysis"])
 
-# Tab 1: Unrestricted Chat & Direct Output
+# Tab 1: Chat & Voice
 with tab1:
     st.markdown('<div class="glass-box">', unsafe_allow_html=True)
     st.subheader("EV AI Assistant")
     
-    # User's Exact Quotes
     user_quotes = [
         "Great power comes with Great responsibilities",
         "No amount of money ever bought a second",
@@ -294,13 +307,13 @@ with tab1:
         "Agar life mein happy ending na ho to who ending nahi picture abhi baki hai mere dost"
     ]
     thought = random.choice(user_quotes)
-    st.info(f"✨ **EV's Thought:** {thought}")
+    st.write(f"✨ **EV's Thought:** {thought}")
     
     components.html(render_voice_button(thought, "thought"), height=55)
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="glass-box">', unsafe_allow_html=True)
-    user_input = st.text_area("Ask EV anything without restrictions:")
+    user_input = st.text_area("Ask EV anything:")
     
     if st.button("Ask EV", use_container_width=True):
         if user_input:
@@ -311,7 +324,6 @@ with tab1:
             st.warning("Please enter a question or query first.")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Display Chat History
     if st.session_state.chat_history:
         st.markdown('<div class="glass-box">', unsafe_allow_html=True)
         st.write("### Conversation")
