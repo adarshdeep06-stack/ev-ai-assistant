@@ -1,3 +1,4 @@
 streamlit
 gtts
 sympy
+pip install google-generativeai
